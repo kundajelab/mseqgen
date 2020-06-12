@@ -1,0 +1,8 @@
+build/
+*.egg-info/
+*.egg
+.ipynb_checkpoints
+tests/
+__pycache__/
+*.py[cod]
+*$py.class
