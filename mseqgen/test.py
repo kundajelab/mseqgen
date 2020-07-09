@@ -127,57 +127,44 @@ python test.py \
 
 
 python test.py \
---input-data /users/zahoor/mseqgen/tests/input-stranded_with_control.json \
+--input-json /users/zahoor/mseqgen/tests/input3.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_peaks.json \
---stranded \
---has-control \
---sampling-mode peaks \
 --threads 2 \
 --epochs 1 \
 --batch-size 2 \
---shuffle \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
 
 
 python test.py \
---input-data /users/zahoor/mseqgen/tests/input.json \
+--input-json /users/zahoor/mseqgen/tests/input.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_peaks.json \
---stranded \
---sampling-mode peaks \
 --threads 10 \
 --epochs 100 \
 --batch-size 16 \
---shuffle \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
 
 python test.py \
---input-data /users/zahoor/mseqgen/tests/input.json \
+--input-json /users/zahoor/mseqgen/tests/input.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_sequential.json \
---stranded \
---sampling-mode sequential \
 --threads 10 \
 --epochs 1 \
 --batch-size 16 \
---shuffle \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
 
 python test.py \
---input-data /users/zahoor/mseqgen/tests/input.json \
+--input-json /users/zahoor/mseqgen/tests/input.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_random.json \
---stranded \
---sampling-mode random \
 --threads 10 \
 --epochs 100 \
 --batch-size 16 \
---shuffle \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
 
 

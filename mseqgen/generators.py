@@ -313,7 +313,7 @@ class MSequenceGenerator:
                 self.tasks, self.chroms, 
                 self.chrom_sizes_df[['chrom', 'size']], self.input_flank)  
             
-        elif sampling_mode == 'sequential':
+        elif self.sampling_mode == 'sequential':
             
             if 'num_positions' not in batch_gen_params:
                 raise quietexception.QuietException(
@@ -329,13 +329,13 @@ class MSequenceGenerator:
             # regular intervals
             self.data = sequtils.getChromPositions(
                 self.chroms, self.chrom_sizes_df[['chrom', 'size']], 
-                self.input_flank, mode=sampling_mode, 
+                self.input_flank, mode=self.sampling_mode, 
                 num_positions=batch_gen_params['num_positions'], 
                 step=batch_gen_params['step_size'])
 
             self.max_jitter = 0
 
-        elif sampling_mode == 'random':
+        elif self.sampling_mode == 'random':
             
             if 'num_positions' not in batch_gen_params:
                 raise quietexception.QuietException(
@@ -345,7 +345,7 @@ class MSequenceGenerator:
             # get a pandas dataframe with random positions
             self.data = sequtils.getChromPositions(
                 self.chroms, self.chrom_sizes_df[['chrom', 'size']], 
-                self.input_flank, mode=sampling_mode, 
+                self.input_flank, mode=self.sampling_mode, 
                 num_positions=batch_gen_params['num_positions'])
 
             self.max_jitter = 0
@@ -823,7 +823,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             For all coordinates in "coords" fetch sequences &
             one hot encode the sequences. Fetch corresponding
             signal values (for e.g. from a bigwig file). 
-            Package the one hot encoded sequences and the ouput
+            Package the one hot encoded sequences and the output
             values as a tuple.
             
             Args:
