@@ -98,7 +98,8 @@ if seqgen is not None:
         print(batchCount)
         batchCount += 1
         if batchCount == seqgen.get_num_batches_per_epoch():
-            break
+            seqgen.set_ready_for_next_epoch()
+            batchCount = 0
 
     t2 = time.time()
     print(t2-t1)
@@ -163,7 +164,7 @@ python test.py \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_random.json \
 --threads 10 \
---epochs 100 \
+--epochs 1 \
 --batch-size 16 \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
 

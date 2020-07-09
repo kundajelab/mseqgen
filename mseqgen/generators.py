@@ -665,7 +665,7 @@ class MSequenceGenerator:
             logging.debug("{} Finished join for epoch {}".format(
                 self.mode, i+1))
             
-            logging.warn("{} batches skipped due to data errors".fromat(
+            logging.warn("{} batches skipped due to data errors".format(
                 num_skipped))
             
             # wait here for the signal 
