@@ -812,6 +812,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         super().__init__(input_params, batch_gen_params, reference_genome, 
                          chrom_sizes, chroms, num_threads, epochs, batch_size)
         
+        self.stranded = input_params['stranded']
         self.name = bpnet_params['name']
         self.filters = bpnet_params['filters']
         self.control_smoothing = input_params['control_smoothing']
@@ -972,12 +973,12 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             # Step 4.2 reverse complement of the control profile
             control_profile[rowCnt:, :, :] = \
                 sequtils.reverse_complement_of_profiles(
-                    control_profile[:rowCnt, :, :])
+                    control_profile[:rowCnt, :, :], self.stranded)
             
             # Step 4.3 reverse complement of the signal profile
             profile[rowCnt:, :, :]  = \
                 sequtils.reverse_complement_of_profiles(
-                    profile[:rowCnt, :, :])
+                    profile[:rowCnt, :, :], self.stranded)
 
         # Step 5. one hot encode all the sequences in the batch 
         X = sequtils.one_hot_encode(sequences)
