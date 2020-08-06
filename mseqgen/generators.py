@@ -350,7 +350,16 @@ class MSequenceGenerator:
 
             self.max_jitter = 0
     
-    
+    def len(self):
+        """
+            The number of batches per epoch
+            
+            Returns:
+                int: number of batches of data generated in each epoch
+        """
+        
+        return self.data.shape[0] // self.batch_size
+        
     def get_num_batches_per_epoch(self):
         """
             The number of batches per epoch
