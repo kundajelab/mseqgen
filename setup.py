@@ -1,15 +1,25 @@
-from setuptools import setup,find_packages
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-config = {
-    'include_package_data': True,
-    'description': 'Multitask batch generation for training deeplearning models on CHIP-seq, CHIP-exo, CHIP-nexus, ATAC-seq, RNA-seq (or any other genomics assays that use highthroughput sequencing)',
-    'download_url': 'https://github.com/kundajelab/mseqgen',
-    'version': '0.1',
-    'packages': ['mseqgen'],
-    'setup_requires': [],
-    'install_requires': ['numpy', 'pandas', 'scipy', 'deeptools', 'pyfaidx'],
-    'name': 'mseqgen'
-}
+from setuptools import setup, find_packages
 
-if __name__== '__main__':
-    setup(**config)
+setup(
+    name="mseqgen",
+    version='0.0.1',
+    description=('Multitask batch generation for training deeplearning models on CHIP-seq, CHIP-exo, CHIP-nexus, ATAC-seq, RNA-seq (or any other genomics assays that use highthroughput sequencing)'),
+    author="Zahoor Zafrulla",
+    author_email="zahoor@stanford.edu",
+    url="https://github.com/kundajelab/mseqgen",
+    packages=find_packages(),
+    install_requires=['numpy', 'pandas', 'scipy', 'deeptools', 'pyfaidx'],
+    extras_require={"dev": ["pytest", "pytest-cov"]},
+    license="MIT license",
+    zip_safe=False,
+    keywords=["deep learning",
+              "computational biology",
+              "bioinformatics",
+              "genomics"],
+    test_suite="tests",
+    include_package_data=True,
+    tests_require=["pytest", "pytest-cov"],
+)
