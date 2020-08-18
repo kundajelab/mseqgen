@@ -96,8 +96,8 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
                 positions in 'sequential' mode
             
         Returns:
-            pandas.DataFrame: two column dataframe of chromosome 
-                positions (chrom, pos)
+            pandas.DataFrame: 
+                two column dataframe of chromosome positions (chrom, pos)
             
     """
     
@@ -174,8 +174,8 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
                 dropped from returned dataframe. 
             
         Returns:
-            pandas.DataFrame: two column dataframe of peak 
-                positions (chrom, pos)
+            pandas.DataFrame: 
+                two column dataframe of peak positions (chrom, pos)
             
     """
 
@@ -256,10 +256,11 @@ def getInputTasks(input_dir, stranded=False, has_control=False,
                 bigWigs maybe required
     
         Returns:
-            collections.OrderedDict: nested python dictionary of tasks,
-                specifying the 'signal' and/or 'control' bigWigs,
-                'peaks' file, 'task_id' & 'strand'. 'strand' is 0 for
-                plus strand and 1 for minus strand
+            collections.OrderedDict: 
+                nested python dictionary of tasks, specifying the 
+                'signal' and/or 'control' bigWigs, 'peaks' file, 
+                'task_id' & 'strand'. 'strand' is 0 for plus strand
+                and 1 for minus strand
     """
     
     # initialize
@@ -525,7 +526,8 @@ def one_hot_encode(sequences):
            sequences (list):: python list of strings of equal length
            
        Returns:
-           numpy.ndarray: 3-dimension numpy array with shape
+           numpy.ndarray: 
+               3-dimension numpy array with shape 
                (len(sequences), len(list_item), 4)
 
     """
