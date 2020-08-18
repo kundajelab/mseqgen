@@ -1,6 +1,9 @@
-""" utitlity functions that will be used by the sequence data 
+""" 
+    Utitlity functions that will be used by the sequence data 
     generators
 
+    IGNORE_FOR_SPHINX_DOCS:
+    
     List of functions:
     
         getChromPositions - returns two column dataframe of chromosome
@@ -17,9 +20,10 @@
             'signal' and/or 'control' bigWigs, 'peaks' file, 'task_id'
             & 'strand
                 
-        roundToMultiple - 
+        roundToMultiple - Return the largest multiple of y < x
         
-        one_hot_encode - returns a 3-dimension numpy array of 
+        one_hot_encode - returns a 3-dimension numpy array of one hot
+            encoding of a list of DNA sequences
         
         reverse_complement_of_sequences - returns the reverse 
             complement of a list of sequences
@@ -27,11 +31,9 @@
         reverse_complement_of_profiles - returns the reverse 
             complement of the assay signal
         
-        
-        
-        
-        
-            
+
+
+    
     License:
     
     MIT License
@@ -57,6 +59,9 @@
     ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN 
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
+    
+    IGNORE_FOR_SPHINX_DOCS
+
 
 """
 import glob
@@ -70,12 +75,12 @@ from mseqgen import quietexception
 
 def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
                       num_positions=-1, step=50):
-    """Chromosome positions spanning the entire chromosome at 
-       a) regular intervals or b) random locations
+    """
+        Chromosome positions spanning the entire chromosome at 
+        a) regular intervals or b) random locations
         
         Args:
-            chroms (space separated list): The list of required 
-                chromosomes 
+            chroms (list): The list of required chromosomes 
             chrom_sizes (pandas.Dataframe): dataframe of chromosome 
                 sizes with 'chrom' and 'size' columns
             flank (int): Buffer size before & after the position to  
@@ -88,7 +93,7 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
                 chromosomes in `chroms`. mode='random' cannot be used
                 with num_positions=-1
             step (int): the interval between consecutive chromosome
-                positions
+                positions in 'sequential' mode
             
         Returns:
             pandas.DataFrame: two column dataframe of chromosome 
@@ -149,7 +154,8 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
     
 
 def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
-    """ Peak positions for all the tasks filtered based on required
+    """ 
+        Peak positions for all the tasks filtered based on required
         chromosomes and other qc filters. Since 'task' here refers 
         one strand of input/output, if the data is stranded the peaks
         will be duplicated for the plus and minus strand.
@@ -511,7 +517,9 @@ def roundToMultiple(x, y):
 
 
 def one_hot_encode(sequences):
-    """One hot encoding of a list of DNA sequences
+    """
+    
+       One hot encoding of a list of DNA sequences 
        
        Args:
            sequences (list):: python list of strings of equal length
@@ -553,15 +561,17 @@ def one_hot_encode(sequences):
 
             
 def reverse_complement_of_sequences(sequences):
-    """Reverse complement of DNA sequences
+    """
+    
+        Reverse complement of DNA sequences
        
-       Args:
-           sequences (list): python list of strings of DNA sequence of 
+        Args:
+           sequences (list): python list of strings of DNA sequence of
                arbitraty length
     
         Returns:
             list: python list of strings
-    
+            
     """
 
     if len(sequences) == 0:
@@ -575,68 +585,73 @@ def reverse_complement_of_sequences(sequences):
 
 
 def reverse_complement_of_profiles(profiles, stranded=True):
-    """Reverse complement of an genomics assay signal profile 
-
-       CONVERT (Stranded profile)
-                ______
-               |      |
-               |      |       
-        _______|      |___________________________________________
-        acgggttttccaaagggtttttaaaacccggttgtgtgtccacacacagtgtgtcaca
-        ----------------------------------------------------------
-        ----------------------------------------------------------
-        ʇƃɔɔɔɐɐɐɐƃƃʇʇʇɔɔɔɐɐɐɐɐʇʇʇʇƃƃƃɔɔɐɐɔɐɔɐɔɐƃƃʇƃʇƃʇƃʇɔɐɔɐɔɐƃʇƃʇ
-        ____________________________________________      ________
-                                                    \    /
-                                                     \  /
-                                                      \/
-
-        TO                                                                      
-
-                  /\
-                 /  \      
-        ________/    \____________________________________________
-        tgtgacacactgtgtgtggacacacaaccgggttttaaaaaccctttggaaaacccgt
-        ----------------------------------------------------------
-        ----------------------------------------------------------
-        ɐɔɐɔʇƃʇƃʇƃɐɔɐɔɐɔɐɔɔʇƃʇƃʇƃʇʇƃƃɔɔɔɐɐɐɐʇʇʇʇʇƃƃƃɐɐɐɔɔʇʇʇʇƃƃƃɔɐ
-        ___________________________________________        _______
-                                                   |      |
-                                                   |      | 
-                                                   |______|                                                          
-
-
-        OR 
-        
-        CONVERT (unstranded profile)
-        
-                ______
-               |      |
-               |      |       
-        _______|      |___________________________________________
-        acgggttttccaaagggtttttaaaacccggttgtgtgtccacacacagtgtgtcaca
-
-        TO                                          
-                                                    ______
-                                                   |      |
-                                                   |      |
-        ___________________________________________|      |_______
-        tgtgacacactgtgtgtggacacacaaccgggttttaaaaaccctttggaaaacccgt
-                                                                  
-        
+    """
+    
+        Reverse complement of an genomics assay signal profile 
 
         Args:
             profiles (numpy.ndarray): 3-dimensional numpy array, a 
                 batch of multitask profiles of shape 
                 (#examples, seq_len, #assays) if unstranded and 
                 (#examples, seq_len, #assays*2) if stranded. In the
-                stranded case the ssumption is: the postive & negative
+                stranded case the assumption is: the postive & negative
                 strands occur in pairs on axis=2(i.e. 3rd dimension) 
                 e.g. 0th & 1st index, 2nd & 3rd...
 
         Returns:
             numpy.ndarray: 3-dimensional numpy array 
-
+            
+            
+        IGNORE_FOR_SPHINX_DOCS:
+        
+        CONVERT (Stranded profile) 
+                 ______ 
+                |      | 
+                |      | 
+         _______|      |___________________________________________ 
+         acgggttttccaaagggtttttaaaacccggttgtgtgtccacacacagtgtgtcaca 
+         ---------------------------------------------------------- 
+         ---------------------------------------------------------- 
+         ʇƃɔɔɔɐɐɐɐƃƃʇʇʇɔɔɔɐɐɐɐɐʇʇʇʇƃƃƃɔɔɐɐɔɐɔɐɔɐƃƃʇƃʇƃʇƃʇɔɐɔɐɔɐƃʇƃʇ 
+         ____________________________________________      ________ 
+                                                     \    /         
+                                                      \  /           
+                                                       \/            
+                                                                      
+         TO                                                                      
+         
+                   /\
+                  /  \      
+         ________/    \____________________________________________
+         tgtgacacactgtgtgtggacacacaaccgggttttaaaaaccctttggaaaacccgt
+         ----------------------------------------------------------
+         ----------------------------------------------------------
+         ɐɔɐɔʇƃʇƃʇƃɐɔɐɔɐɔɐɔɔʇƃʇƃʇƃʇʇƃƃɔɔɔɐɐɐɐʇʇʇʇʇƃƃƃɐɐɐɔɔʇʇʇʇƃƃƃɔɐ
+         ___________________________________________        _______
+                                                    |      |
+                                                    |      | 
+                                                    |______|                                                          
+         
+         
+         OR 
+         
+         CONVERT (unstranded profile)
+         
+                 ______
+                |      |
+                |      |       
+         _______|      |___________________________________________
+         acgggttttccaaagggtttttaaaacccggttgtgtgtccacacacagtgtgtcaca
+        
+         TO                                          
+                                                     ______
+                                                    |      |
+                                                    |      |
+         ___________________________________________|      |_______
+         tgtgacacactgtgtgtggacacacaaccgggttttaaaaaccctttggaaaacccgt
+        
+        IGNORE_FOR_SPHINX_DOCS
+       
     """
     
     # check if profiles is 3-dimensional

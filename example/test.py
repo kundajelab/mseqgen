@@ -89,7 +89,7 @@ seqgen = MBPNetSequenceGenerator(input_params, batch_gen_params, bpnet_params,
 if seqgen is not None:
     generator = seqgen.gen()
 
-    print(seqgen.get_num_batches_per_epoch())
+    print(seqgen.len())
 
     t1 = time.time()
 
@@ -97,7 +97,7 @@ if seqgen is not None:
     for batchx, batchy in generator:
         print(batchCount)
         batchCount += 1
-        if batchCount == seqgen.get_num_batches_per_epoch():
+        if batchCount == seqgen.len():
             seqgen.set_ready_for_next_epoch()
             batchCount = 0
 
@@ -113,7 +113,7 @@ python test.py \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --threads 10 \
---epochs 100 \
+--epochs 10 \
 --batch-size 16 
 
 python test.py \
@@ -144,7 +144,7 @@ python test.py \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
 --batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_peaks.json \
 --threads 10 \
---epochs 100 \
+--epochs 10 \
 --batch-size 16 \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
 
