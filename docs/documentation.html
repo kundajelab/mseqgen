@@ -180,7 +180,7 @@ sequencing data of various geonmics assays</p>
 <h4>1.1 MSequenceGenerator<a class="headerlink" href="#msequencegenerator" title="Permalink to this headline">¶</a></h4>
 <dl class="class">
 <dt id="mseqgen.generators.MSequenceGenerator">
-<em class="property">class </em><code class="sig-prename descclassname">mseqgen.generators.</code><code class="sig-name descname">MSequenceGenerator</code><span class="sig-paren">(</span><em class="sig-param">input_config</em>, <em class="sig-param">batch_gen_params</em>, <em class="sig-param">reference_genome</em>, <em class="sig-param">chrom_sizes</em>, <em class="sig-param">chroms</em>, <em class="sig-param">num_threads</em>, <em class="sig-param">epochs</em>, <em class="sig-param">batch_size</em><span class="sig-paren">)</span><a class="headerlink" href="#mseqgen.generators.MSequenceGenerator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mseqgen.generators.</code><code class="sig-name descname">MSequenceGenerator</code><span class="sig-paren">(</span><em class="sig-param">input_config</em>, <em class="sig-param">batch_gen_params</em>, <em class="sig-param">reference_genome</em>, <em class="sig-param">chrom_sizes</em>, <em class="sig-param">chroms</em>, <em class="sig-param">num_threads=10</em>, <em class="sig-param">epochs=1</em>, <em class="sig-param">batch_size=64</em>, <em class="sig-param">samples=None</em><span class="sig-paren">)</span><a class="headerlink" href="#mseqgen.generators.MSequenceGenerator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Multi task batch data generation for training deep neural
 networks on high-throughput sequencing data of various
 geonmics assays</p>
@@ -219,9 +219,10 @@ negative samples are added to each batch</p>
 [‘peaks’, ‘sequential’, ‘random’, ‘manual’]. In
 ‘peaks’ mode the data samples are fetched from the
 peaks bed file specified in the json file
-input_config[‘data’]. In ‘manual’ mode, the bed
-file containing the chromosome position information
-is passed to the ‘samples’ argument of the class</p>
+input_config[‘data’]. In ‘manual’ mode, the two
+column pandas dataframe containing the chromosome
+position information is passed to the ‘samples’
+argument of the class</p>
 </dd>
 <dt><em>shuffle (boolean)</em></dt><dd><p>specify whether input data is shuffled at the
 begininning of each epoch</p>
@@ -246,10 +247,16 @@ fasta file</p></li>
 <li><p><strong>chroms</strong> (<em>str</em>) – the list of chromosomes that will be sampled
 for batch generation</p></li>
 <li><p><strong>num_threads</strong> (<em>int</em>) – number of parallel threads for batch
-generation</p></li>
+generation, default = 10</p></li>
 <li><p><strong>epochs</strong> (<em>int</em>) – number of iterations for looping over input
-data</p></li>
-<li><p><strong>batch_size</strong> (<em>int</em>) – size of each generated batch of data</p></li>
+data, default = 1</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em>) – size of each generated batch of data,
+default = 64</p></li>
+<li><p><strong>samples</strong> (<em>pandas.Dataframe</em>) – two column pandas dataframe
+with chromosome position information. Required column
+names are column 1:’chrom’, column 2:’pos’. Use this
+parameter if you set batch_gen_params[‘sampling_mode’]
+to ‘manual’. default = None</p></li>
 </ul>
 </dd>
 </dl>
@@ -257,7 +264,7 @@ data</p></li>
 <dl class="method">
 <dt id="mseqgen.generators.MSequenceGenerator.gen">
 <code class="sig-name descname">gen</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mseqgen.generators.MSequenceGenerator.gen" title="Permalink to this definition">¶</a></dt>
-<dd><p>generator function to yield batches of data</p>
+<dd><p>Generator function to yield batches of data</p>
 </dd></dl>
 
 <dl class="method">
@@ -300,7 +307,7 @@ next epoch to True</p>
 <h4>1.2 MBPNetSequenceGenerator<a class="headerlink" href="#mbpnetsequencegenerator" title="Permalink to this headline">¶</a></h4>
 <dl class="class">
 <dt id="mseqgen.generators.MBPNetSequenceGenerator">
-<em class="property">class </em><code class="sig-prename descclassname">mseqgen.generators.</code><code class="sig-name descname">MBPNetSequenceGenerator</code><span class="sig-paren">(</span><em class="sig-param">input_config</em>, <em class="sig-param">batch_gen_params</em>, <em class="sig-param">bpnet_params</em>, <em class="sig-param">reference_genome</em>, <em class="sig-param">chrom_sizes</em>, <em class="sig-param">chroms</em>, <em class="sig-param">num_threads=10</em>, <em class="sig-param">epochs=100</em>, <em class="sig-param">batch_size=64</em><span class="sig-paren">)</span><a class="headerlink" href="#mseqgen.generators.MBPNetSequenceGenerator" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">mseqgen.generators.</code><code class="sig-name descname">MBPNetSequenceGenerator</code><span class="sig-paren">(</span><em class="sig-param">input_config</em>, <em class="sig-param">batch_gen_params</em>, <em class="sig-param">bpnet_params</em>, <em class="sig-param">reference_genome</em>, <em class="sig-param">chrom_sizes</em>, <em class="sig-param">chroms</em>, <em class="sig-param">num_threads=10</em>, <em class="sig-param">epochs=100</em>, <em class="sig-param">batch_size=64</em>, <em class="sig-param">samples=None</em><span class="sig-paren">)</span><a class="headerlink" href="#mseqgen.generators.MBPNetSequenceGenerator" title="Permalink to this definition">¶</a></dt>
 <dd><p>Multi task batch data generation for training BPNet
 on high-throughput sequencing data of various
 geonmics assays</p>
@@ -384,6 +391,11 @@ generation</p></li>
 <li><p><strong>epochs</strong> (<em>int</em>) – number of iterations for looping over input
 data</p></li>
 <li><p><strong>batch_size</strong> (<em>int</em>) – size of each generated batch of data</p></li>
+<li><p><strong>samples</strong> (<em>pandas.Dataframe</em>) – two column pandas dataframe
+with chromosome position information. Required column
+names are column 1:’chrom’, column 2:’pos’. Use this
+parameter if you set batch_gen_params[‘sampling_mode’]
+to ‘manual’. default = None</p></li>
 </ul>
 </dd>
 </dl>
@@ -391,7 +403,7 @@ data</p></li>
 <dl class="method">
 <dt id="mseqgen.generators.MBPNetSequenceGenerator.gen">
 <code class="sig-name descname">gen</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#mseqgen.generators.MBPNetSequenceGenerator.gen" title="Permalink to this definition">¶</a></dt>
-<dd><p>generator function to yield batches of data</p>
+<dd><p>Generator function to yield batches of data</p>
 </dd></dl>
 
 <dl class="method">

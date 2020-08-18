@@ -112,9 +112,10 @@ class MSequenceGenerator:
                     ['peaks', 'sequential', 'random', 'manual']. In 
                     'peaks' mode the data samples are fetched from the
                     peaks bed file specified in the json file 
-                    input_config['data']. In 'manual' mode, the bed
-                    file containing the chromosome position information
-                    is passed to the 'samples' argument of the class
+                    input_config['data']. In 'manual' mode, the two 
+                    column pandas dataframe containing the chromosome  
+                    position information is passed to the 'samples' 
+                    argument of the class
                 
                 *shuffle (boolean)*
                     specify whether input data is shuffled at the 
@@ -144,12 +145,19 @@ class MSequenceGenerator:
                 for batch generation
                 
             num_threads (int): number of parallel threads for batch
-                generation
+                generation, default = 10
                 
             epochs (int): number of iterations for looping over input
-                data
+                data, default = 1
                 
-            batch_size (int): size of each generated batch of data
+            batch_size (int): size of each generated batch of data, 
+                default = 64
+                
+            samples (pandas.Dataframe): two column pandas dataframe
+                with chromosome position information. Required column
+                names are column 1:'chrom', column 2:'pos'. Use this
+                parameter if you set batch_gen_params['sampling_mode']
+                to 'manual'. default = None
 
         
         **Members**
@@ -223,12 +231,18 @@ class MSequenceGenerator:
             
             _stop (boolean): flag to indicate that batch generation 
                 should be terminated after the current epoch
+                
+            _samples (pandas.Dataframe): two column pandas dataframe with
+                chromosome positions that will be used for generating 
+                batches of data
+            
         IGNORE_FOR_SPHINX_DOCS
     """
     
 
     def __init__(self, input_config, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms, num_threads, epochs, batch_size):
+                 chrom_sizes, chroms, num_threads=10, epochs=1, batch_size=64, 
+                 samples=None):
         
         #: True if data is stranded
         self._stranded = input_config['stranded']
@@ -254,7 +268,7 @@ class MSequenceGenerator:
         if os.path.isdir(input_config['data']):
             #: dictionary of tasks for training
             self._tasks = sequtils.getInputTasks(
-                input_config['data'], stranded=self.__stranded, 
+                input_config['data'], stranded=self._stranded, 
                 has_control=self._has_control,
                 require_peaks=(self._sampling_mode == 'peaks'), 
                 mode=self._mode)
@@ -352,7 +366,7 @@ class MSequenceGenerator:
             # Note - we need the 'tasks' dictionary so we can access
             # the peaks.bed files from the paths available in the 
             # dictionary
-            self.data = sequtils.getPeakPositions(
+            self._samples = sequtils.getPeakPositions(
                 self._tasks, self._chroms, 
                 self._chrom_sizes_df[['chrom', 'size']], self._input_flank)  
             
@@ -370,12 +384,14 @@ class MSequenceGenerator:
 
             # get a pandas dataframe with sequential positions at 
             # regular intervals
-            self.data = sequtils.getChromPositions(
+            self._samples = sequtils.getChromPositions(
                 self._chroms, self._chrom_sizes_df[['chrom', 'size']], 
                 self._input_flank, mode=self._sampling_mode, 
                 num_positions=batch_gen_params['num_positions'], 
                 step=batch_gen_params['step_size'])
 
+            # since the positions are fixed and equally spaced we 
+            # wont jitter
             self._max_jitter = 0
 
         elif self._sampling_mode == 'random':
@@ -386,13 +402,33 @@ class MSequenceGenerator:
                     "Required for random sampling mode")
             
             # get a pandas dataframe with random positions
-            self.data = sequtils.getChromPositions(
+            self._samples = sequtils.getChromPositions(
                 self._chroms, self._chrom_sizes_df[['chrom', 'size']], 
                 self._input_flank, mode=self._sampling_mode, 
                 num_positions=batch_gen_params['num_positions'])
 
+            # its already random, why jitter?!
             self._max_jitter = 0
-    
+        
+        elif self._sampling_mode == 'manual':
+            
+            # check if the samples parameter has been provided
+            if samples is None:
+                raise quietexception.QuietException(
+                    "If sampling_mode is 'manual', 'samples' parameter"
+                    "has to be set. Found None.")
+            
+            if not isinstance(samples, pandas.Dataframe) or \
+                set(samples.columns.tolist()) != set(['chrom', 'pos']):
+                raise quietexception.QuietException(
+                    "samples' parameter should be a valid pandas.Dataframe"
+                    "with two columns 'chrom' and 'pos'")  
+                
+            #: two column pandas dataframe with chromosome positions,
+            #: columns = ['chrom', 'pos']
+            self._samples = samples
+                    
+            
     def len(self):
         """
             The number of batches per epoch
@@ -401,11 +437,12 @@ class MSequenceGenerator:
                 int: number of batches of data generated in each epoch
         """
         
-        return self.data.shape[0] // self._batch_size
+        return self._samples.shape[0] // self._batch_size
         
 
     def set_ready_for_next_epoch(self):
-        """ Set the variable that controls batch generation for the
+        """ 
+            Set the variable that controls batch generation for the
             next epoch to True
            
         """
@@ -413,21 +450,24 @@ class MSequenceGenerator:
 
 
     def set_stop(self):
-        """ Set stop flag to True
+        """ 
+            Set stop flag to True
         
         """
         self._stop = True
 
 
     def set_early_stopping(self):
-        """ Set early stopping flag to True
+        """ 
+            Set early stopping flag to True
           
         """
         self.set_stop()
 
         
     def _generate_batch(self, coords):
-        """ Generate one batch of inputs and outputs
+        """ 
+            Generate one batch of inputs and outputs
             
         """
         
@@ -436,13 +476,15 @@ class MSequenceGenerator:
     
     def _get_negative_batch(self):
         """
-            get chrom positions for the negative samples using
+            Get chrom positions for the negative samples using
             uniform random sampling from across the all chromosomes
             in self._chroms
             
             Returns:
-                pandas.DataFrame: dataframe of coordinates 
-                    ('chrom' & 'pos')
+                pandas.DataFrame: 
+                    two column dataframe of chromosome positions with
+                    'chrom' & 'pos' columns
+
         """
 
         # Step 1: select chromosomes, using sampling weights 
@@ -477,11 +519,9 @@ class MSequenceGenerator:
             Args:
                 coords_df (pandas.DataFrame): dataframe containing
                     the chrom & peak pos
+                
                 mpq (multiprocessing.Queue): The multiprocessing queue
                     to hold the batches
-                
-            Return
-                ---
         """
         
         # divide the coordinates dataframe into batches
@@ -522,13 +562,14 @@ class MSequenceGenerator:
             Args:
                 mpq (multiprocessing.Queue): The multiprocessing queue
                     to steal from
+                
                 q (Queue): The regular queue to put the batch into
+                
                 num_batches (int): the number of batches to "steal"
                     from the mp queue
+                
                 thread_id (int): thread id for debugging purposes
 
-            Returns:
-                ---
         """
         for i in range(num_batches):            
             q.put(mpq.get())
@@ -545,9 +586,6 @@ class MSequenceGenerator:
             Args:
                 data (pandas.DataFrame): dataframe with 'chrom' &
                     'pos' columns
-                            
-            Returns:
-                ---
         """
         
         # list of processes that are spawned
@@ -648,7 +686,7 @@ class MSequenceGenerator:
 
     def gen(self):
         """
-            generator function to yield batches of data
+            Generator function to yield batches of data
 
         """
         
@@ -659,10 +697,10 @@ class MSequenceGenerator:
             logging.debug("{} ready set to FALSE".format(self._mode))
             
             if self._shuffle: # shuffle at the beginning of each epoch
-                data = self.data.sample(frac = 1.0)
+                data = self._samples.sample(frac = 1.0)
                 logging.debug("{} Shuffling complete".format(self._mode))
             else:
-                data= self.data
+                data= self._samples
 
             # spawn multiple processes to generate batches of data in
             # parallel for each epoch
@@ -712,7 +750,8 @@ class MSequenceGenerator:
 
 
 class MBPNetSequenceGenerator(MSequenceGenerator):
-    """ Multi task batch data generation for training BPNet
+    """ 
+        Multi task batch data generation for training BPNet
         on high-throughput sequencing data of various
         geonmics assays
     
@@ -810,7 +849,12 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 
             batch_size (int): size of each generated batch of data
 
-        
+            samples (pandas.Dataframe): two column pandas dataframe
+                with chromosome position information. Required column
+                names are column 1:'chrom', column 2:'pos'. Use this
+                parameter if you set batch_gen_params['sampling_mode']
+                to 'manual'. default = None
+
         **Members**
         
         IGNORE_FOR_SPHINX_DOCS:
@@ -824,11 +868,12 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
 
     def __init__(self, input_config, batch_gen_params, bpnet_params,
                  reference_genome, chrom_sizes, chroms, num_threads=10, 
-                 epochs=100, batch_size=64):
+                 epochs=100, batch_size=64, samples=None):
         
         # call base class constructor
         super().__init__(input_config, batch_gen_params, reference_genome, 
-                         chrom_sizes, chroms, num_threads, epochs, batch_size)
+                         chrom_sizes, chroms, num_threads, epochs, batch_size, 
+                         samples)
         
         #: nested list of gaussiam smoothing parameters. Each inner list
         #: has two values - [sigma, window_size] for supplemental
@@ -851,7 +896,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     coordinate
                 
             Returns:
-                tuple: When 'mode' is 'train' or 'val' a batch tuple 
+                tuple: 
+                    When 'mode' is 'train' or 'val' a batch tuple 
                     with one hot encoded sequences and corresponding 
                     outputs and when 'mode' is 'test' tuple of 
                     cordinates & the inputs
@@ -993,12 +1039,12 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             # Step 4.2 reverse complement of the control profile
             control_profile[rowCnt:, :, :] = \
                 sequtils.reverse_complement_of_profiles(
-                    control_profile[:rowCnt, :, :], self.__stranded)
+                    control_profile[:rowCnt, :, :], self._stranded)
             
             # Step 4.3 reverse complement of the signal profile
             profile[rowCnt:, :, :]  = \
                 sequtils.reverse_complement_of_profiles(
-                    profile[:rowCnt, :, :], self.__stranded)
+                    profile[:rowCnt, :, :], self._stranded)
 
         # Step 5. one hot encode all the sequences in the batch 
         X = sequtils.one_hot_encode(sequences)
