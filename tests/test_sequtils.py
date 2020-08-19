@@ -24,7 +24,7 @@ def test_getChromPositions_sequential():
     
     # read the chrom sizes into a dataframe and filter rows from
     # unwanted chromosomes
-    chrom_sizes = pd.read_csv('/users/zahoor/reference/GRCh38_EBV.chrom.sizes',
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes',
                               sep = '\t', header=None, 
                               names = ['chrom', 'size']) 
     
@@ -60,7 +60,7 @@ def test_getChromPositions_random():
     
     # read the chrom sizes into a dataframe and filter rows from
     # unwanted chromosomes
-    chrom_sizes = pd.read_csv('/users/zahoor/reference/GRCh38_EBV.chrom.sizes',
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes',
                               sep = '\t', header=None, 
                               names = ['chrom', 'size']) 
     
@@ -98,7 +98,7 @@ def test_getPeakPositions():
     
     # read the chrom sizes into a dataframe and filter rows from
     # unwanted chromosomes
-    chrom_sizes = pd.read_csv('/users/zahoor/reference/GRCh38_EBV.chrom.sizes',
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes',
                               sep = '\t', header=None, 
                               names = ['chrom', 'size']) 
     chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
@@ -116,35 +116,35 @@ def test_getPeakPositions():
     assert peaks_df.shape == (24, 2)
 
     
-def test_getInputTasks_singletask_stranded_with_controls():
-    """
-        test getInputTasks function for the single task case
-        where data is loaded from a directory path, is stranded
-        and has controls
-    """
+# def test_getInputTasks_singletask_stranded_with_controls():
+#     """
+#         test getInputTasks function for the single task case
+#         where data is loaded from a directory path, is stranded
+#         and has controls
+#     """
     
     
-    tasks = sequtils.getInputTasks(
-        "./tests/test_data/single_task/stranded_with_controls", stranded=True, 
-        has_control=True, require_peaks=True, mode='train')
+#     tasks = sequtils.getInputTasks(
+#         "./tests/test_data/single_task/stranded_with_controls", stranded=True, 
+#         has_control=True, require_peaks=True, mode='train')
     
-    expected_result = OrderedDict(
-        [('task0_plus', 
-          {'strand': 0, 
-           'task_id': 0, 
-           'signal': './tests/test_data/single_task/stranded_with_controls/task0/plus.bw', 
-           'peaks': './tests/test_data/single_task/stranded_with_controls/task0/peaks.bed', 
-           'control': './tests/test_data/single_task/stranded_with_controls/task0/control_plus.bw'}), 
-         ('task0_minus', 
-          {'strand': 1, 
-           'task_id': 0, 
-           'signal': './tests/test_data/single_task/stranded_with_controls/task0/minus.bw', 
-           'peaks': './tests/test_data/single_task/stranded_with_controls/task0/peaks.bed', 
-           'control': './tests/test_data/single_task/stranded_with_controls/task0/control_minus.bw'})])
+#     expected_result = OrderedDict(
+#         [('task0_plus', 
+#           {'strand': 0, 
+#            'task_id': 0, 
+#            'signal': './tests/test_data/single_task/stranded_with_controls/task0/plus.bw', 
+#            'peaks': './tests/test_data/single_task/stranded_with_controls/task0/peaks.bed', 
+#            'control': './tests/test_data/single_task/stranded_with_controls/task0/control_plus.bw'}), 
+#          ('task0_minus', 
+#           {'strand': 1, 
+#            'task_id': 0, 
+#            'signal': './tests/test_data/single_task/stranded_with_controls/task0/minus.bw', 
+#            'peaks': './tests/test_data/single_task/stranded_with_controls/task0/peaks.bed', 
+#            'control': './tests/test_data/single_task/stranded_with_controls/task0/control_minus.bw'})])
         
-    assert tasks == expected_result
-
-
+#     assert tasks == expected_result
+#
+#
 # def test_getInputTasks_singletask_stranded_without_controls():
 #     """
 #         test getInputTasks function for the single task case
