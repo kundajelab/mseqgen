@@ -24,9 +24,8 @@ def test_getChromPositions_sequential():
     
     # read the chrom sizes into a dataframe and filter rows from
     # unwanted chromosomes
-    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes',
-                              sep = '\t', header=None, 
-                              names = ['chrom', 'size']) 
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes', sep='\t', 
+                              header=None, names=['chrom', 'size']) 
     
     chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
 
@@ -42,7 +41,7 @@ def test_getChromPositions_sequential():
     assert all([a == b for a, b in zip(columns, peaks_df.columns)])
     
     # check if the shape matches
-    assert peaks_df.shape == (24*100, 2)  
+    assert peaks_df.shape == (24 * 100, 2)  
 
 
 def test_getChromPositions_random():
@@ -60,9 +59,8 @@ def test_getChromPositions_random():
     
     # read the chrom sizes into a dataframe and filter rows from
     # unwanted chromosomes
-    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes',
-                              sep = '\t', header=None, 
-                              names = ['chrom', 'size']) 
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes', sep='\t', 
+                              header=None, names=['chrom', 'size']) 
     
     chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
 
@@ -78,7 +76,7 @@ def test_getChromPositions_random():
     assert all([a == b for a, b in zip(columns, peaks_df.columns)])
     
     # check if the shape matches
-    assert peaks_df.shape == (24*100, 2)  
+    assert peaks_df.shape == (24 * 100, 2)  
 
 
 def test_getPeakPositions():
@@ -86,24 +84,39 @@ def test_getPeakPositions():
         test getPeakPositions function that returns a pandas 
         dataframe. Check for shape of dataframe and column names
     """
-    
-    tasks = sequtils.getInputTasks(
-        "./tests/test_data/single_task/unstranded_without_controls", 
-        stranded=False, has_control=False, require_peaks=True, mode='train')
-    
+
     chroms = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 
               'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 
               'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 
               'chrX', 'chrY']
     
+    tasks = {
+        "task0_plus": {
+            "strand": 0, 
+            "task_id": 0, 
+            "signal": "tests/test_data/single_task/"
+                      "stranded_with_controls/task0/plus.bw", 
+            "control": "tests/test_data/single_task/"
+                       "stranded_with_controls/task0/control_plus.bw", 
+            "peaks": "tests/test_data/single_task/"
+                     "stranded_with_controls/task0/peaks.bed"},
+        "task0_minus": {
+            "strand": 1, 
+            "task_id": 0, 
+            "signal": "tests/test_data/single_task/"
+                      "stranded_with_controls/task0/minus.bw", 
+            "control": "tests/test_data/single_task/"
+                       "stranded_with_controls/task0/control_minus.bw",
+            "peaks": "tests/test_data/single_task/"
+                     "stranded_with_controls/task0/peaks.bed"} 
+    }
+
     # read the chrom sizes into a dataframe and filter rows from
     # unwanted chromosomes
-    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes',
-                              sep = '\t', header=None, 
-                              names = ['chrom', 'size']) 
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes', sep='\t', 
+                              header=None, names=['chrom', 'size']) 
     chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
 
-    
     # get peak positions for each task as one dataframe
     peaks_df = sequtils.getPeakPositions(tasks, chroms, chrom_sizes, flank=128, 
                                          drop_duplicates=False)
@@ -112,245 +125,21 @@ def test_getPeakPositions():
     columns = ['chrom', 'pos']    
     assert all([a == b for a, b in zip(columns, peaks_df.columns)])
     
-    # check is the shape matches
+    # check if the shape matches
+    assert peaks_df.shape == (48, 2)
+    
+    # get peak positions for each task as one dataframe, this time
+    # drop duplicates. Since we are using the same peaks.bed file
+    # the total number of peak position should be reduced by half
+    peaks_df = sequtils.getPeakPositions(tasks, chroms, chrom_sizes, flank=128, 
+                                         drop_duplicates=True)
+    
+    # check if columns match
+    columns = ['chrom', 'pos']    
+    assert all([a == b for a, b in zip(columns, peaks_df.columns)])
+    
+    # check if the shape matches
     assert peaks_df.shape == (24, 2)
-
-    
-# def test_getInputTasks_singletask_stranded_with_controls():
-#     """
-#         test getInputTasks function for the single task case
-#         where data is loaded from a directory path, is stranded
-#         and has controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/single_task/stranded_with_controls", stranded=True, 
-#         has_control=True, require_peaks=True, mode='train')
-    
-#     expected_result = OrderedDict(
-#         [('task0_plus', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/single_task/stranded_with_controls/task0/plus.bw', 
-#            'peaks': './tests/test_data/single_task/stranded_with_controls/task0/peaks.bed', 
-#            'control': './tests/test_data/single_task/stranded_with_controls/task0/control_plus.bw'}), 
-#          ('task0_minus', 
-#           {'strand': 1, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/single_task/stranded_with_controls/task0/minus.bw', 
-#            'peaks': './tests/test_data/single_task/stranded_with_controls/task0/peaks.bed', 
-#            'control': './tests/test_data/single_task/stranded_with_controls/task0/control_minus.bw'})])
-        
-#     assert tasks == expected_result
-#
-#
-# def test_getInputTasks_singletask_stranded_without_controls():
-#     """
-#         test getInputTasks function for the single task case
-#         where data is loaded from a directory path, is stranded
-#         and has controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/single_task/stranded_without_controls", stranded=True, 
-#         has_control=False, require_peaks=True, mode='train')
-    
-#     expected_result = OrderedDict(
-#         [('task0_plus', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/single_task/stranded_without_controls/task0/plus.bw', 
-#            'peaks': './tests/test_data/single_task/stranded_without_controls/task0/peaks.bed'}), 
-#          ('task0_minus', 
-#           {'strand': 1, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/single_task/stranded_without_controls/task0/minus.bw', 
-#            'peaks': './tests/test_data/single_task/stranded_without_controls/task0/peaks.bed'})])
-        
-#     assert tasks == expected_result
-
-# def test_getInputTasks_singletask_unstranded_with_controls():
-#     """
-#         test getInputTasks function for the single task case
-#         where data is loaded from a directory path, is stranded
-#         and has controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/single_task/unstranded_with_controls", stranded=False, 
-#         has_control=True, require_peaks=True, mode='train')
-    
-#     print(tasks)
-    
-#     expected_result = OrderedDict(
-#         [('task0_unstranded', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/single_task/unstranded_with_controls/task0/unstranded.bw', 
-#            'peaks': './tests/test_data/single_task/unstranded_with_controls/task0/peaks.bed',
-#            'control': './tests/test_data/single_task/unstranded_with_controls/task0/control_unstranded.bw'})])
-        
-#     assert tasks == expected_result
-
-# def test_getInputTasks_singletask_unstranded_without_controls():
-#     """
-#         test getInputTasks function for the single task case
-#         where data is loaded from a directory path, is stranded
-#         and has controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/single_task/unstranded_without_controls", stranded=False, 
-#         has_control=False, require_peaks=True, mode='train')
-    
-#     print(tasks)
-    
-#     expected_result = OrderedDict(
-#         [('task0_unstranded', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/single_task/unstranded_without_controls/task0/unstranded.bw', 
-#            'peaks': './tests/test_data/single_task/unstranded_without_controls/task0/peaks.bed'})])
-        
-#     assert tasks == expected_result
-
-
-# def test_getInputTasks_multitask_stranded_with_controls():
-#     """
-#         test getInputTasks function for the multitask task case
-#         where data is loaded from a directory path, is stranded
-#         and has controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/multi_task/stranded_with_controls", stranded=True, 
-#         has_control=True, require_peaks=True, mode='train')
-    
-#     expected_result = OrderedDict(
-#         [('task0_plus', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/multi_task/stranded_with_controls/task0/plus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_with_controls/task0/peaks.bed', 
-#            'control': './tests/test_data/multi_task/stranded_with_controls/task0/control_plus.bw'}), 
-#          ('task0_minus', 
-#           {'strand': 1, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/multi_task/stranded_with_controls/task0/minus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_with_controls/task0/peaks.bed', 
-#            'control': './tests/test_data/multi_task/stranded_with_controls/task0/control_minus.bw'}),
-#          ('task1_plus', 
-#           {'strand': 0, 
-#            'task_id': 1, 
-#            'signal': './tests/test_data/multi_task/stranded_with_controls/task1/plus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_with_controls/task1/peaks.bed', 
-#            'control': './tests/test_data/multi_task/stranded_with_controls/task1/control_plus.bw'}),
-#          ('task1_minus', 
-#           {'strand': 1, 
-#            'task_id': 1, 
-#            'signal': './tests/test_data/multi_task/stranded_with_controls/task1/minus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_with_controls/task1/peaks.bed', 
-#            'control': './tests/test_data/multi_task/stranded_with_controls/task1/control_minus.bw'})])
-
-#     assert tasks == expected_result
-
-    
-# def test_getInputTasks_multitask_stranded_without_controls():
-#     """
-#         test getInputTasks function for the multitask task case
-#         where data is loaded from a directory path, is stranded
-#         and does not have controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/multi_task/stranded_without_controls", stranded=True, 
-#         has_control=True, require_peaks=True, mode='train')
-    
-#     expected_result = OrderedDict(
-#         [('task0_plus', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/multi_task/stranded_without_controls/task0/plus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_without_controls/task0/peaks.bed'}), 
-#          ('task0_minus', 
-#           {'strand': 1, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/multi_task/stranded_without_controls/task0/minus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_without_controls/task0/peaks.bed'}),
-#          ('task1_plus', 
-#           {'strand': 0, 
-#            'task_id': 1, 
-#            'signal': './tests/test_data/multi_task/stranded_without_controls/task1/plus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_without_controls/task1/peaks.bed'}),
-#          ('task1_minus', 
-#           {'strand': 1, 
-#            'task_id': 1, 
-#            'signal': './tests/test_data/multi_task/stranded_without_controls/task1/minus.bw', 
-#            'peaks': './tests/test_data/multi_task/stranded_without_controls/task1/peaks.bed'})])
-
-#     assert tasks == expected_result
-
-
-# def test_getInputTasks_multitask_unstranded_with_controls():
-#     """
-#         test getInputTasks function for the multitask task case
-#         where data is loaded from a directory path, is not stranded
-#         and has controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/multi_task/unstranded_with_controls", stranded=False, 
-#         has_control=True, require_peaks=True, mode='train')
-    
-#     expected_result = OrderedDict(
-#         [('task0_unstranded', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/multi_task/unstranded_with_controls/task0/unstranded.bw', 
-#            'peaks': './tests/test_data/multi_task/unstranded_with_controls/task0/peaks.bed', 
-#            'control': './tests/test_data/multi_task/unstranded_with_controls/task0/control_unstranded.bw'}), 
-#          ('task1_unstranded', 
-#           {'strand': 0, 
-#            'task_id': 1, 
-#            'signal': './tests/test_data/multi_task/unstranded_with_controls/task1/unstranded.bw', 
-#            'peaks': './tests/test_data/multi_task/unstranded_with_controls/task1/peaks.bed', 
-#            'control': './tests/test_data/multi_task/unstranded_with_controls/task1/control_unstranded.bw'})])
-
-#     assert tasks == expected_result
-
-    
-# def test_getInputTasks_multitask_unstranded_without_controls():
-#     """
-#         test getInputTasks function for the multitask task case
-#         where data is loaded from a directory path, is not stranded
-#         and does not have controls
-#     """
-    
-    
-#     tasks = sequtils.getInputTasks(
-#         "./tests/test_data/multi_task/unstranded_without_controls", stranded=False, 
-#         has_control=False, require_peaks=True, mode='train')
-    
-#     expected_result = OrderedDict(
-#         [('task0_unstranded', 
-#           {'strand': 0, 
-#            'task_id': 0, 
-#            'signal': './tests/test_data/multi_task/unstranded_without_controls/task0/unstranded.bw', 
-#            'peaks': './tests/test_data/multi_task/unstranded_without_controls/task0/peaks.bed'}), 
-#          ('task1_unstranded', 
-#           {'strand': 0, 
-#            'task_id': 1, 
-#            'signal': './tests/test_data/multi_task/unstranded_without_controls/task1/unstranded.bw', 
-#            'peaks': './tests/test_data/multi_task/unstranded_without_controls/task1/peaks.bed'})])
-
-#     assert tasks == expected_result
 
 
 def test_roundToMultiple():
@@ -366,6 +155,7 @@ def test_roundToMultiple():
     
     assert sequtils.roundToMultiple(x, y) == expected_res
 
+    
 def test_one_hot_encode():
     """
         test once hot encoding of dna sequences
@@ -395,6 +185,7 @@ def test_one_hot_encode():
 
     np.testing.assert_array_equal(res, expected_res)
 
+    
 def test_reverse_complement_of_sequences():
     """
         test reverse complement of one hot encoded sequences
@@ -417,22 +208,22 @@ def test_reverse_complement_of_profiles():
     """
     
     # stranded profile 
-    #examples, #seq_len, #assays*2) = (5, 3, 2*2)
+    # examples, #seq_len, #assays*2) = (5, 3, 2*2)
     stranded_profile = [[[1, 0, 0, 0], 
-                        [0, 1, 0, 0], 
-                        [0, 0, 1, 0]], 
-                       [[1, 0, 0, 0], 
-                        [1, 0, 0, 0], 
-                        [0, 0, 1, 0]], 
-                       [[0, 1, 0, 0], 
-                        [0, 0, 0, 1], 
-                        [0, 1, 0, 0]], 
-                       [[0, 1, 1, 0], 
-                        [0, 0, 0, 0], 
-                        [0, 0, 0, 0]], 
-                       [[0, 1, 0, 0], 
-                        [0, 1, 0, 0], 
-                        [0, 1, 0, 1]]]
+                         [0, 1, 0, 0], 
+                         [0, 0, 1, 0]], 
+                        [[1, 0, 0, 0], 
+                         [1, 0, 0, 0], 
+                         [0, 0, 1, 0]], 
+                        [[0, 1, 0, 0], 
+                         [0, 0, 0, 1], 
+                         [0, 1, 0, 0]], 
+                        [[0, 1, 1, 0], 
+                         [0, 0, 0, 0], 
+                         [0, 0, 0, 0]], 
+                        [[0, 1, 0, 0], 
+                         [0, 1, 0, 0], 
+                         [0, 1, 0, 1]]]
 
     # reverese complement of stranded profile
     expected_res = [[[0, 0, 0, 1], 
@@ -456,22 +247,22 @@ def test_reverse_complement_of_profiles():
                                                   stranded=True)    
     np.testing.assert_array_equal(res, np.array(expected_res))
 
-    #examples, #seq_len, #assays) = (5, 3, 4)
-    unstranded_profile= [[[1, 0, 0, 0], 
-                          [0, 1, 0, 0], 
-                          [0, 0, 1, 0]], 
-                         [[1, 0, 0, 0], 
-                          [1, 0, 0, 0], 
-                          [0, 0, 1, 0]], 
-                         [[0, 1, 0, 0], 
-                          [0, 0, 0, 1], 
-                          [0, 1, 0, 0]], 
-                         [[0, 1, 1, 0], 
-                          [0, 0, 0, 0], 
-                          [0, 0, 0, 0]], 
-                         [[0, 1, 0, 0], 
-                          [0, 1, 0, 0], 
-                          [0, 1, 0, 1]]]
+    # examples, #seq_len, #assays) = (5, 3, 4)
+    unstranded_profile = [[[1, 0, 0, 0], 
+                           [0, 1, 0, 0], 
+                           [0, 0, 1, 0]], 
+                          [[1, 0, 0, 0], 
+                           [1, 0, 0, 0], 
+                           [0, 0, 1, 0]], 
+                          [[0, 1, 0, 0], 
+                           [0, 0, 0, 1], 
+                           [0, 1, 0, 0]], 
+                          [[0, 1, 1, 0], 
+                           [0, 0, 0, 0], 
+                           [0, 0, 0, 0]], 
+                          [[0, 1, 0, 0], 
+                           [0, 1, 0, 0], 
+                           [0, 1, 0, 1]]]
     
     # reverese complement of unstranded profile
     expected_res = [[[0, 0, 1, 0], 
@@ -494,4 +285,3 @@ def test_reverse_complement_of_profiles():
     res = sequtils.reverse_complement_of_profiles(np.array(unstranded_profile),
                                                   stranded=False)    
     np.testing.assert_array_equal(res, np.array(expected_res))
-
