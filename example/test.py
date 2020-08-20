@@ -50,10 +50,7 @@ parser.add_argument('--epochs', '-e', type=int,
 parser.add_argument('--batch-size', '-b', type=int,
                     help="training batch size", default=64)
 
-
-            
 args = parser.parse_args()
-
 
 # load the input params from json file
 with open(args.input_json, "r") as input_json:
@@ -68,10 +65,10 @@ with open(args.bpnet_params_json, "r") as bpnet_json:
     bpnet_params = json.loads(bpnet_json.read())
 
                 
-chroms = ['chr1','chr2','chr3','chr4','chr5','chr6',
-          'chr7','chr8','chr9','chr10','chr11','chr12',
-          'chr13','chr14','chr15','chr16','chr17','chr18',
-          'chr19','chr20','chr21','chr22','chrX','chrY']
+chroms = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
+          'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
+          'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18',
+          'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY']
 
 val_chroms = ['chr10', 'chr8']
 test_chroms = ['chr1']
@@ -102,8 +99,7 @@ if seqgen is not None:
             batchCount = 0
 
     t2 = time.time()
-    print(t2-t1)
-
+    print(t2 - t1)
 
 """
 python test.py \
@@ -117,17 +113,6 @@ python test.py \
 --batch-size 16 
 
 python test.py \
---input-json /users/zahoor/mseqgen/tests/input2.json \
---batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_peaks.json \
---bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json \
---reference-genome /users/zahoor/reference/hg38.genome.fa \
---chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
---threads 2 \
---epochs 1 \
---batch-size 2 
-
-
-python test.py \
 --input-json /users/zahoor/mseqgen/tests/input3.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
@@ -136,7 +121,6 @@ python test.py \
 --epochs 1 \
 --batch-size 2 \
 --bpnet-params-json /users/zahoor/mseqgen/tests/bpnet_params.json
-
 
 python test.py \
 --input-json /users/zahoor/mseqgen/tests/input.json \
@@ -152,7 +136,8 @@ python test.py \
 --input-json /users/zahoor/mseqgen/tests/input.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
---batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_sequential.json \
+--batchgen-params-json \
+    /users/zahoor/mseqgen/tests/batchgen_params_sequential.json \
 --threads 10 \
 --epochs 1 \
 --batch-size 16 \
@@ -162,7 +147,8 @@ python test.py \
 --input-json /users/zahoor/mseqgen/tests/input.json \
 --reference-genome /users/zahoor/reference/hg38.genome.fa \
 --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
---batchgen-params-json /users/zahoor/mseqgen/tests/batchgen_params_random.json \
+--batchgen-params-json \
+    /users/zahoor/mseqgen/tests/batchgen_params_random.json \
 --threads 10 \
 --epochs 1 \
 --batch-size 16 \

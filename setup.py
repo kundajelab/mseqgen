@@ -5,13 +5,16 @@ from setuptools import setup, find_packages
 
 setup(
     name="mseqgen",
-    version='0.0.1',
-    description=('Multitask batch generation for training deeplearning models on CHIP-seq, CHIP-exo, CHIP-nexus, ATAC-seq, RNA-seq (or any other genomics assays that use highthroughput sequencing)'),
+    version="0.0.1",
+    description=("Multitask batch generation for training deeplearning"
+                 "models on CHIP-seq, CHIP-exo, CHIP-nexus, ATAC-seq, "
+                 "RNA-seq (or any other genomics assays that use "
+                 "highthroughput sequencing)"),
     author="Zahoor Zafrulla",
     author_email="zahoor@stanford.edu",
     url="https://github.com/kundajelab/mseqgen",
     packages=find_packages(),
-    install_requires=['numpy', 'pandas', 'scipy', 'deeptools', 'pyfaidx'],
+    install_requires=["numpy", "pandas", "scipy", "deeptools", "pyfaidx"],
     extras_require={"dev": ["pytest", "pytest-cov"]},
     license="MIT license",
     zip_safe=False,
