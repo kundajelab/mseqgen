@@ -66,6 +66,7 @@ from queue import Queue
 from scipy.ndimage import gaussian_filter1d
 from threading import Thread
 
+
 class MSequenceGenerator:
     
     """ Multi task batch data generation for training deep neural
@@ -238,7 +239,6 @@ class MSequenceGenerator:
             
         IGNORE_FOR_SPHINX_DOCS
     """
-    
 
     def __init__(self, input_config, batch_gen_params, reference_genome, 
                  chrom_sizes, chroms, num_threads=10, epochs=1, batch_size=64, 
@@ -256,41 +256,34 @@ class MSequenceGenerator:
         #: sampling mode to get chromosome positions
         self._sampling_mode = batch_gen_params['sampling_mode']
         
-        # check if at least one of the two input modes is present
-        if not os.path.isdir(input_config['data']) and \
-            os.path.splitext(input_config['data'])[1] != '.json':
+        # make sure the input_data json file exists
+        if not os.path.isfile(input_config['data']):
             raise quietexception.QuietException(
-                "Either input directory or input json must be specified. "
-                "None found.")
+                "File not found: {} OR you may have accidentally "
+                "specified a directory path.".format(input_config['data']))
         
-        # load the input tasks either from the input dir or from
-        # the input json
-        if os.path.isdir(input_config['data']):
-            #: dictionary of tasks for training
-            self._tasks = sequtils.getInputTasks(
-                input_config['data'], stranded=self._stranded, 
-                has_control=self._has_control,
-                require_peaks=(self._sampling_mode == 'peaks'), 
-                mode=self._mode)
-        else:
-            # make sure the input_data json file exists
-            if not os.path.isfile(input_config['data']):
-                raise quietexception.QuietException(
-                    "File not found: {}", input_config['data'])
-        
-            with open(input_config['data'], 'r') as inp_json:
+        # load the json file
+        with open(input_config['data'], 'r') as inp_json:
+            try:
                 #: dictionary of tasks for training
                 self._tasks = json.loads(inp_json.read())
+            except json.decoder.JSONDecodeError:
+                raise quietexception.QuietException(
+                    "Unable to load json file {}. Valid json expected. "
+                    "Check the file for syntax errors.".format(
+                        input_config['data']))
 
         # check if the reference genome file exists
         if not os.path.isfile(reference_genome):
             raise quietexception.QuietException(
-                "File not found: {}", reference_genome)
+                "File not found: {} OR you may have accidentally "
+                "specified a directory path.", reference_genome)
         
         # check if the chrom_sizes file exists
         if not os.path.isfile(chrom_sizes):
             raise quietexception.QuietException(
-                "File not found: {}", chrom_sizes)
+                "File not found: {} OR you may have accidentally "
+                "specified a directory path.".format(chrom_sizes))
 
         #: the number of tasks in _tasks 
         self._num_tasks = len(list(self._tasks.keys()))
@@ -299,8 +292,8 @@ class MSequenceGenerator:
         self._reference = reference_genome
 
         #: dataframe of the chromosomes and their corresponding sizes
-        self._chrom_sizes_df = pd.read_csv(chrom_sizes, sep = '\t', 
-                              header=None, names = ['chrom', 'size']) 
+        self._chrom_sizes_df = pd.read_csv(
+            chrom_sizes, sep='\t', header=None, names=['chrom', 'size']) 
 
         #: list of chromosomes that will be sampled for batch generation
         self._chroms = chroms
@@ -311,8 +304,8 @@ class MSequenceGenerator:
             self._chrom_sizes_df['chrom'].isin(self._chroms)]
 
         # generate a new column for sampling weights of the chromosomes
-        self._chrom_sizes_df['weights'] = (self._chrom_sizes_df['size'] / 
-                                          self._chrom_sizes_df['size'].sum())
+        self._chrom_sizes_df['weights'] = \
+            (self._chrom_sizes_df['size'] / self._chrom_sizes_df['size'].sum())
 
         #: number of parallel threads for batch generation 
         self._num_threads = num_threads
@@ -325,7 +318,6 @@ class MSequenceGenerator:
 
         # rest of batch generation parameters
         #: int:one half of input sequence length
-        self._input_flank = 673
         self._input_flank = batch_gen_params['input_seq_len'] // 2
         
         #: one half of input sequence length
@@ -340,7 +332,8 @@ class MSequenceGenerator:
         #: samples will be added to each batch. num_negative_samples = 
         #: negative_sampling_rate * batch_size. Ignored if 
         #: --sampling_mode is not 'peaks', and --mode is not 'train'
-        self._negative_sampling_rate = batch_gen_params['negative_sampling_rate']
+        self._negative_sampling_rate = \
+            batch_gen_params['negative_sampling_rate']
         
         #: if True reverse complement augmentation will be applied to
         #: each batch of data. The size of the generated batch is 
@@ -348,7 +341,6 @@ class MSequenceGenerator:
         #: then (batch_size + num_negative_samples)*2). Ignored if
         #: --mode is not 'train'
         self._rev_comp_aug = batch_gen_params['rev_comp_aug']
-        
         
         self._shuffle = batch_gen_params['shuffle']
         
@@ -419,16 +411,15 @@ class MSequenceGenerator:
                     "has to be set. Found None.")
             
             if not isinstance(samples, pandas.Dataframe) or \
-                set(samples.columns.tolist()) != set(['chrom', 'pos']):
+                    set(samples.columns.tolist()) != set(['chrom', 'pos']):
                 raise quietexception.QuietException(
                     "samples' parameter should be a valid pandas.Dataframe"
-                    "with two columns 'chrom' and 'pos'")  
+                    "with two columns 'chrom' and 'pos'")
                 
             #: two column pandas dataframe with chromosome positions,
             #: columns = ['chrom', 'pos']
             self._samples = samples
                     
-            
     def len(self):
         """
             The number of batches per epoch
@@ -438,8 +429,7 @@ class MSequenceGenerator:
         """
         
         return self._samples.shape[0] // self._batch_size
-        
-
+   
     def set_ready_for_next_epoch(self):
         """ 
             Set the variable that controls batch generation for the
@@ -448,14 +438,12 @@ class MSequenceGenerator:
         """
         self._ready_for_next_epoch = True
 
-
     def set_stop(self):
         """ 
             Set stop flag to True
         
         """
         self._stop = True
-
 
     def set_early_stopping(self):
         """ 
@@ -464,7 +452,6 @@ class MSequenceGenerator:
         """
         self.set_stop()
 
-        
     def _generate_batch(self, coords):
         """ 
             Generate one batch of inputs and outputs
@@ -473,7 +460,6 @@ class MSequenceGenerator:
         
         raise NotImplementedError("Implement this method in a derived class")
 
-    
     def _get_negative_batch(self):
         """
             Get chrom positions for the negative samples using
@@ -490,7 +476,7 @@ class MSequenceGenerator:
         # Step 1: select chromosomes, using sampling weights 
         # according to sizes
         chrom_df = self._chrom_sizes_df.sample(
-            n=int(self._batch_size*self._negative_sampling_rate),
+            n=int(self._batch_size * self._negative_sampling_rate),
             weights=self._chrom_sizes_df.weights, replace=True)
 
         # Step 2: generate 'n' random numbers where 'n' is the length
@@ -500,13 +486,13 @@ class MSequenceGenerator:
         # Step 3. multiply the random numbers with the size column.
         # Additionally, factor in the flank size and jitter while 
         # computing the position
-        chrom_df['pos'] = ((chrom_df['size'] - 
-                            ((self._input_flank + self._max_jitter)*2)) * r
-                           + self._input_flank + self._max_jitter).astype(int)
+        chrom_df['pos'] = ((chrom_df['size'] - ((self._input_flank
+                                                 + self._max_jitter) * 2))
+                           * r + self._input_flank
+                           + self._max_jitter).astype(int)
 
         return chrom_df[['chrom', 'pos']]
 
-    
     def _proc_target(self, coords_df, mpq, proc_idx):
         """
             Function that will be executed in a separate process.
@@ -537,7 +523,7 @@ class MSequenceGenerator:
             # add equal number of negative samples
             if self._mode == "train" and \
                 self._sampling_mode == 'peaks' and \
-                self._negative_sampling_rate > 0.0:
+                    self._negative_sampling_rate > 0.0:
                     
                 neg_batch = self._get_negative_batch()
                 batch_df = pd.concat([batch_df, neg_batch])
@@ -577,7 +563,6 @@ class MSequenceGenerator:
         logging.debug("{} stealer thread {} got {} batches from mpq".format(
             self._mode, thread_id, num_batches))
 
-            
     def _epoch_run(self, data):
         """
             Manage batch generation processes & threads
@@ -619,22 +604,22 @@ class MSequenceGenerator:
             mpq = mp.Queue()
 
             # give each process a slice of the dataframe of positives
-            df = data[i*samples_per_processor : 
-                      (i+1)*samples_per_processor][['chrom', 'pos']]
+            df = data[i * samples_per_processor: 
+                      (i + 1) * samples_per_processor][['chrom', 'pos']]
 
             # the last process gets the leftover data points
-            if i == (self._num_threads-1):
-                df = pd.concat([df, data[(i+1)*samples_per_processor:]])
+            if i == (self._num_threads - 1):
+                df = pd.concat([df, data[(i + 1) * samples_per_processor:]])
                 
             num_batches.append(len(df) // self._batch_size)
             
             if df.shape[0] != 0:
                 logging.debug("{} spawning process {}, df size {}, "
                               "sum(num_batches) {}".format(
-                              self._mode, i, df.shape, sum(num_batches)))
+                                  self._mode, i, df.shape, sum(num_batches)))
 
                 # spawn and start the batch generation process 
-                p = mp.Process(target = self._proc_target, args = [df, mpq, i])
+                p = mp.Process(target=self._proc_target, args=[df, mpq, i])
                 p.start()
                 procs.append(p)
                 mp_queues.append(mpq)
@@ -651,7 +636,7 @@ class MSequenceGenerator:
                 
                 logging.debug("{} skipping process {}, df size {}, "
                               "num_batches {}".format(
-                              self._mode, i, df.shape, sum(num_batches)))
+                                  self._mode, i, df.shape, sum(num_batches)))
                 
                 procs.append(None)
                 mp_queues.append(None)
@@ -696,18 +681,19 @@ class MSequenceGenerator:
             
             logging.debug("{} ready set to FALSE".format(self._mode))
             
-            if self._shuffle: # shuffle at the beginning of each epoch
-                data = self._samples.sample(frac = 1.0)
+            if self._shuffle:
+                # shuffle at the beginning of each epoch
+                data = self._samples.sample(frac=1.0)
                 logging.debug("{} Shuffling complete".format(self._mode))
             else:
-                data= self._samples
+                data = self._samples
 
             # spawn multiple processes to generate batches of data in
             # parallel for each epoch
             procs, threads, q, total_batches = self._epoch_run(data)
 
             logging.debug("{} Batch generation for epoch {} started".format(
-                self._mode, i+1))
+                self._mode, i + 1))
             
             # yield the correct number of batches for each epoch
             num_skipped = 0
@@ -731,7 +717,7 @@ class MSequenceGenerator:
                     self._mode, j))
             
             logging.debug("{} Finished join for epoch {}".format(
-                self._mode, i+1))
+                self._mode, i + 1))
             
             if num_skipped > 0:
                 logging.warn("\n{} batches skipped due to data errors".format(
@@ -880,7 +866,6 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         #: control control tracks
         self._control_smoothing = bpnet_params['control_smoothing']
 
-        
     def _generate_batch(self, coords):
         """Generate one batch of inputs and outputs for training BPNet
             
@@ -908,7 +893,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
 
         # Initialization
         # (batch_size, output_len, 1 + #smoothing_window_sizes)
-        control_profile = np.zeros((coords.shape[0], self._output_flank*2, 
+        control_profile = np.zeros((coords.shape[0], self._output_flank * 2, 
                                     1 + len(self._control_smoothing)), 
                                    dtype=np.float32)
         
@@ -919,7 +904,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         # in 'test' mode we only need the sequence & the control
         if self._mode == "train" or self._mode == "val":
             # (batch_size, output_len, #tasks)
-            profile = np.zeros((coords.shape[0], self._output_flank*2, 
+            profile = np.zeros((coords.shape[0], self._output_flank * 2, 
                                 self._num_tasks), dtype=np.float32)
         
             # (batch_size, #tasks)
@@ -979,7 +964,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             # collect all the sequences into a list
             sequences.append(seq)
             
-            start = row['pos'] - self._output_flank  + jitter
+            start = row['pos'] - self._output_flank + jitter
             end = row['pos'] + self._output_flank + jitter
             
             # collect all the start/end coordinates into a list
@@ -1023,7 +1008,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                         values = np.nan_to_num(values)
 
                     # update row in batch with the signal values
-                    profile[rowCnt, :, task_id*2 + strand] = values
+                    profile[rowCnt, :, task_id * 2 + strand] = values
 
             rowCnt += 1
         
@@ -1042,7 +1027,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     control_profile[:rowCnt, :, :], self._stranded)
             
             # Step 4.3 reverse complement of the signal profile
-            profile[rowCnt:, :, :]  = \
+            profile[rowCnt:, :, :] = \
                 sequtils.reverse_complement_of_profiles(
                     profile[:rowCnt, :, :], self._stranded)
 
@@ -1057,16 +1042,17 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         # we can perform smoothing on the entire batch of control values
         for i in range(len(self._control_smoothing)):
             
-                # compute truncate value for scipy gaussian_filter1d
-                # "Truncate the filter at this many standard deviations"
-                sigma = self._control_smoothing[i][0]
-                window_size = self._control_smoothing[i][1]
-                truncate = (((window_size - 1)/2)-0.5)/sigma
+            # compute truncate value for scipy gaussian_filter1d
+            # "Truncate the filter at this many standard deviations"
+            sigma = self._control_smoothing[i][0]
+            window_size = self._control_smoothing[i][1]
+            truncate = (((window_size - 1) / 2) - 0.5) / sigma
                 
-                # its i+1 because at index 0 we have the original 
-                # control  
-                control_profile[:, :, i+1] = gaussian_filter1d(
-                    control_profile[:, :, i+1], sigma=sigma, truncate=truncate)
+            # its i+1 because at index 0 we have the original 
+            # control  
+            control_profile[:, :, i + 1] = gaussian_filter1d(
+                control_profile[:, :, i + 1], sigma=sigma,
+                truncate=truncate)
 
         # log of sum of control profile without smoothing (idx = 0)
         control_profile_counts = np.log(
@@ -1086,6 +1072,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
 
         # in 'test' mode return a tuple of cordinates & the
         # input dictionary
-        return (coordinates, {'sequence': X, 
-                            'control_profile': control_profile,
-                            'control_logcount': control_profile_counts})
+        return (coordinates, 
+                {'sequence': X, 
+                 'control_profile': control_profile,
+                 'control_logcount': control_profile_counts})
