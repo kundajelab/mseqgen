@@ -5,4 +5,4 @@ deeptools
 pyfaidx
 pytest
 pytest-cov
-pep8
+pycodestyle

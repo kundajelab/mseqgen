@@ -14,6 +14,9 @@ jobs:
       - run:
           command: python -m pytest
           name: Test
+      - run:
+          command: pycodestyle --ignore=W291,W293,W503 --exclude=*build,.ipynb* .
+          name: Pep8
 
 workflows:
   main:
