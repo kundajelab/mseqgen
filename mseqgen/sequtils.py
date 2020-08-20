@@ -62,8 +62,8 @@
     
     IGNORE_FOR_SPHINX_DOCS
 
-
 """
+
 import glob
 import logging
 import numpy as np
@@ -72,6 +72,7 @@ import pandas as pd
 
 from collections import OrderedDict
 from mseqgen import quietexception
+
 
 def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
                       num_positions=-1, step=50):
@@ -133,7 +134,7 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
             if num_positions != -1:
                 # change the last positon based on the number of 
                 # required positions
-                _end = start + step*num_positions
+                _end = start + step * num_positions
                 
                 # if the newly computed 'end' goes beyond the 
                 # chromosome end (we could throw an error here)
@@ -144,7 +145,7 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
             pos_array = list(range(start, _end, step))    
 
         # construct a dataframe for this chromosome
-        chrom_df = pd.DataFrame({'chrom': [chroms[i]]*len(pos_array), 
+        chrom_df = pd.DataFrame({'chrom': [chroms[i]] * len(pos_array), 
                                  'pos': pos_array})
         
         # concatenate to existing df
@@ -233,272 +234,7 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
         
     return allPeaks
 
-def getInputTasks(input_dir, stranded=False, has_control=False,
-                  require_peaks=True, mode='train'):
-    """Dictionary specifying the various tasks for the profile model
-    
-        Args:
-            input_dir (str): the path to directory containing the 
-                signal & peaks files for each task. For single task
-                this points to directory containing the bigWig and 
-                peaks.bed files. For multi task this points to the
-                directory containing the sub directories for each task
-            stranded (boolean): indicates whether the bigwig files 
-                in the input_dir are stranded or unstranded
-            has_control (boolean): indicates whether control is
-                included
-            require_peaks (boolean): specify whether the 'peaks' file
-                is required for each task. If training(& validation)
-                or testing is performed on the sequential or at 
-                randomly sampled points, then set to False
-            mode (str): either 'train', 'val' or 'test'. In 'test' 
-                mode 'signal' bigWigs are not required, only 'control'
-                bigWigs maybe required
-    
-        Returns:
-            collections.OrderedDict: 
-                nested python dictionary of tasks, specifying the 
-                'signal' and/or 'control' bigWigs, 'peaks' file, 
-                'task_id' & 'strand'. 'strand' is 0 for plus strand
-                and 1 for minus strand
-    """
-    
-    # initialize
-    tasks = OrderedDict()
-    task_id = 0
-    
-    for root, dirs, filenames in os.walk(input_dir, topdown=True):
 
-        # ignore hidden files & directories
-        files = [f for f in filenames if not f[0] == '.']
-        # dirs should be modified in place
-        dirs[:] = [d for d in dirs if not d[0] == '.']
-        
-        # if the dir is one of the sub directories, and we find more
-        # sub directories within
-        if (root != input_dir) and (len(dirs) > 0):
-            logging.error("Incompatible directory structure, " + 
-                          "max allowed depth is 2.\n{}".format(root))
-            return None
-
-        # if at the top level we find both sub directories & files
-        if (root == input_dir) and (len(dirs) > 0) and (len(filenames) > 0):
-            logging.error("Incompatible directory structure. " +
-                          "Directories can only exclusively have" + 
-                          "sub directories or files, not both." + 
-                          "\n{}\n{}".format(dirs, filenames))
-            return None
-        
-        # inside a directory with only files & no sub directories
-        if len(dirs) == 0:
-            # get all the bigWigs that dont begin with 
-            # 'control' prefix
-            signal_bigwigs = glob.glob(root + '/[!control]*.bw')
-            # the control bigWigs
-            control_bigwigs = glob.glob(root + '/control*.bw')
-            # the peaks file
-            peaks = glob.glob(root + '/peaks.bed')
-
-            # if no peaks file found
-            if require_peaks and len(peaks) == 0:
-                logging.error("Peaks file not found! Peaks file " + 
-                              "should be in bed format and named " + 
-                              "peaks.bed.\n{}".format(root))
-                return None
-    
-            # if not in train or val mode signal bigWigs can be 
-            # excluded because we are making predictions
-            if mode == 'train' or mode == 'val':
-                # if no bigWig file is found
-                if len(signal_bigwigs) == 0:
-                    logging.error("At least one signal bigWig file " +
-                                  "expected. None found.\n{}".format(root))
-                    return None
-
-                # if more than two signal bigWig files are found 
-                # in stranded data 
-                if len(signal_bigwigs) > 2 and stranded:
-                    logging.error("At most two signal bigWig files allowed. " + 
-                                  "One for plus strand and one for the " + 
-                                  "minus strand.\n{}".format(signal_bigwigs))
-                    return None
-                
-                # if two or more signal bigWig files found in 
-                # 'unstranded' data
-                if len(signal_bigwigs) >= 2 and not stranded:
-                    logging.error("Only one signal bigWig file " +
-                                  "(unstranded.bw) must be given for " + 
-                                  "unstranded tasks. Use --stranded to " +
-                                  "indicate input data is stranded" +
-                                  "\n{}".format(signal_bigwigs))
-                    return None
-
-                # if only one signal bigWig file is found in 'stranded' 
-                # data
-                if len(signal_bigwigs) == 1 and stranded:
-                    logging.error("Two signal bigWigs files (plus.bw and " + 
-                                  "minus.bw) expected for stranded tasks." +
-                                  "\n{}".format(signal_bigwigs))
-                    return None
-
-
-                # if the one signal bigWig file in 'unstranded' data is
-                # not called 'unstranded.bw'
-                if (len(signal_bigwigs) == 1) and \
-                    root+'/unstranded.bw' not in signal_bigwigs:
-
-                    logging.error("When using a single bigWig file it" + 
-                                  "should be named unstranded.bw" + 
-                                  "\n{}".format(signal_bigwigs))
-                    return None
-
-                # if the two bigWig files in 'stranded' data are not 
-                # called 'plus.bw' & 'minus.bw'
-                if len(signal_bigwigs) == 2 and \
-                    (root+'/plus.bw' not in signal_bigwigs or 
-                     root+'/minus.bw' not in signal_bigwigs):
-
-                    logging.error("When using two bigWig files the " +
-                                  "assumption is that the files are " + 
-                                  "for the two strands, so they should " + 
-                                  "be named plus.bw and minus.bw." + 
-                                  "\n{}".format(signal_bigwigs))
-                    return None
-
-            # if control is expected but contol bigWigs are NOT found
-            if has_control and len(control_bigwigs) == 0:
-                logging.error("Missing control bigWig file(s).  "
-                              "--has_control flag indicates that control "
-                              "should be present.\n{}".format(control_bigwigs))                
-                
-            # if control is NOT expected but contol bigWigs are found
-            if not has_control and len(control_bigwigs) > 0:
-                logging.error("Found control bigWig file(s) when"
-                              "--has_control flag indicates that control"
-                              "should NOT be present.\n{}".format(
-                                  control_bigwigs))                
-
-            # if more than two control bigWig files are found in 
-            # 'stranded' data
-            if len(control_bigwigs) > 2 and stranded:
-                logging.error("At most two control bigWig files allowed. " + 
-                              "One for plus strand and one for the " + 
-                              "minus strand.\n{}".format(control_bigwigs))
-                return None
-
-            # if two or more control bigWig files found in 
-            # 'unstranded' data
-            if len(control_bigwigs) >= 2 and not stranded:
-                logging.error("Only one control bigWig file " +
-                              "(control_unstranded.bw)  must be given for " + 
-                              "unstranded tasks. Use --stranded to " +
-                              "indicate input data is stranded" + 
-                              "\n{}".format(control_bigwigs))
-                return None
-
-            # if only one control bigWig file is found in 'stranded' 
-            # data
-            if len(control_bigwigs) == 1 and stranded:
-                logging.error("Two control bigWigs files (control_plus.bw  " + 
-                              "and control_minus.bw) expected for stranded ." +
-                              "tasks\n{}".format(control_bigwigs))
-
-            # if the one control bigWig file in 'unstranded' data is
-            # not called 'control_unstranded.bw'
-            if (len(control_bigwigs) == 1) and \
-                root+'/control_unstranded.bw' not in control_bigwigs:
-                
-                logging.error("When using a single control bigWig file it" + 
-                              "should be named control_unstranded.bw" + 
-                              "\n{}".format(control_bigwigs))
-                return None
-            
-            # if the two bigWig files in 'stranded' data are not 
-            # called 'control_plus.bw' & 'control_minus.bw'
-            if len(control_bigwigs) == 2 and \
-                (root+'/control_plus.bw' not in control_bigwigs or 
-                 root+'/control_minus.bw' not in control_bigwigs):
-
-                logging.error("When using two bigWig files the " +
-                              "assumption is that the files are " + 
-                              "for the two strands, so they should " + 
-                              "be named control_plus.bw and " + 
-                              "control_minus.bw.\n{}".format(signal_bigwigs))
-                return None
-            
-            # add new entries to the dictionary
-            if stranded:
-                # if data is stranded we'll add separate entries for the
-                # plus and minus strand
-                # a. the `task_id` is the same for the plus-minus pair
-                # b. 'strand' is 0 for plus and 1 for minus
-                # c. `peaks` is the same for the plus-minus pair
-                
-                task_name_plus = '{}_plus'.format(os.path.basename(root))
-                task_name_minus = '{}_minus'.format(os.path.basename(root))
-
-                tasks[task_name_plus] = {'strand': 0, 
-                                         'task_id': task_id}
-                
-                tasks[task_name_minus] = {'strand': 1, 
-                                          'task_id': task_id}
-                
-                # add the signal track in train and val mode
-                if mode == 'train' or mode == 'val':
-                    tasks[task_name_plus]['signal'] = \
-                        '{}/plus.bw'.format(root)
-                    tasks[task_name_minus]['signal'] = \
-                        '{}/minus.bw'.format(root)
-                
-                # add peaks file if required
-                if require_peaks:
-                    tasks[task_name_plus]['peaks'] = \
-                        '{}/peaks.bed'.format(root)
-                    tasks[task_name_minus]['peaks'] = \
-                        '{}/peaks.bed'.format(root)
-
-                # add entries for control if it exists
-                if has_control:
-                    tasks[task_name_plus]['control'] = \
-                        '{}/control_plus.bw'.format(root)
-                
-                    tasks[task_name_minus]['control'] = \
-                        '{}/control_minus.bw'.format(root)
-            
-            # unstranded
-            else:
-                task_name = '{}_unstranded'.format(os.path.basename(root))
-
-                tasks[task_name] = {'strand': 0, 
-                                    'task_id': task_id}
-
-                # add the signal track in train or val mode
-                if mode == 'train' or mode == 'val':
-                    tasks[task_name]['signal'] = \
-                        '{}/unstranded.bw'.format(root)
-                    
-                # add peaks file if required
-                if require_peaks:
-                    tasks[task_name]['peaks'] = \
-                        '{}/peaks.bed'.format(root)
-                                       
-                # add entries for control if it exists
-                if has_control:
-                    tasks[task_name]['control'] = \
-                        '{}/control_unstranded.bw'.format(root)
-            
-            # increment task id for next task
-            task_id += 1
-            
-        else:
-            # in place sort of `dirs`, so tasks are always created
-            # in sorted order (os.walk will walk through in sorted
-            # order)
-            dirs.sort()
-    
-    return tasks
-
-    
 def roundToMultiple(x, y): 
     """Return the largest multiple of y < x
         
@@ -511,7 +247,7 @@ def roundToMultiple(x, y):
             
     """
 
-    r = (x+int(y/2)) & ~(y-1)
+    r = (x + int(y / 2)) & ~(y - 1)
     if r > x:
         r = r - y
     return r
@@ -539,7 +275,7 @@ def one_hot_encode(sequences):
     seq_len = len(sequences[0])
     for sequence in sequences:
         if len(sequence) != seq_len:
-            logging.error("Incompatible sequence lengths in batch. " +
+            logging.error("Incompatible sequence lengths in batch. "
                           "All sequences should have the same length.")
             return None
             
@@ -587,7 +323,7 @@ def reverse_complement_of_sequences(sequences):
 
 
 def reverse_complement_of_profiles(profiles, stranded=True):
-    """
+    r"""
     
         Reverse complement of an genomics assay signal profile 
 
@@ -658,7 +394,7 @@ def reverse_complement_of_profiles(profiles, stranded=True):
     
     # check if profiles is 3-dimensional
     if profiles.ndim != 3:
-        logging.error("'profiles' should be a 3-dimensional array. " + 
+        logging.error("'profiles' should be a 3-dimensional array. "
                       "Found {}".format(profiles.ndim))
 
     # check if the 3rd dimension is an even number if profiles are stranded
