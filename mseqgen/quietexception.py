@@ -4,6 +4,7 @@ A custom class for exceptions without printing the traceback
 
 import sys
 
+
 class QuietException(Exception):
     """
         An exception that when raised results in the error message
@@ -29,6 +30,6 @@ def quiet_hook(kind, message, traceback):
         # print error type, message & traceback
         sys.__excepthook__(kind, message, traceback)  
 
+
 # customize handling of exceptions by assigning the exception hook
 sys.excepthook = quiet_hook
-
