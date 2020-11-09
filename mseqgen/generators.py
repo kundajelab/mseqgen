@@ -59,6 +59,7 @@ import pandas as pd
 import pyBigWig
 import pyfaidx
 import random
+import re
 
 from mseqgen import sequtils
 from mseqgen import quietexception
@@ -458,8 +459,18 @@ class MSequenceGenerator:
             
         """
         
-        raise NotImplementedError("Implement this method in a derived class")
+        raise NotImplementedError("Method not implemented. Used a "
+                                  "derived class.")
 
+    def get_name(self):
+        """ 
+            Name of the sequence generator
+            
+        """
+        raise NotImplementedError("Method not implemented. Used a "
+                                  "derived class.")
+        
+    
     def _get_negative_batch(self):
         """
             Get chrom positions for the negative samples using
@@ -856,6 +867,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                  reference_genome, chrom_sizes, chroms, num_threads=10, 
                  epochs=100, batch_size=64, samples=None):
         
+        # name of the generator class
+        self.name = "BPNet"
+        
         # call base class constructor
         super().__init__(input_config, batch_gen_params, reference_genome, 
                          chrom_sizes, chroms, num_threads, epochs, batch_size, 
@@ -1076,3 +1090,33 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 {'sequence': X, 
                  'control_profile': control_profile,
                  'control_logcount': control_profile_counts})
+
+       
+def list_generator_names():
+    """
+       List all available sequence generators that are derived
+       classes of the base class MSequenceGenerator
+       
+       Returns:
+           list: list of sequence generator names
+    """
+    
+    generator_names = []
+    for c in MSequenceGenerator.__subclasses__():        
+        result = re.search('M(.*)SequenceGenerator', c.__name__)
+        generator_names.append(result.group(1))
+
+    return generator_names
+        
+def find_generator_by_name(generator_name):
+    """
+        Get the sequence generator class name given its name
+        
+        Returns:
+            str: sequence generator class name
+    """
+    
+    for c in MSequenceGenerator.__subclasses__():
+        result = re.search('M(.*)SequenceGenerator', c.__name__)
+        if generator_name == result.group(1):
+            return c.__name__
