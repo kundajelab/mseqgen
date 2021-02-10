@@ -15,7 +15,7 @@ setup(
     url="https://github.com/kundajelab/mseqgen",
     packages=find_packages(),
     install_requires=["numpy", "pandas", "scipy", "deeptools", "pyfaidx"],
-    extras_require={"dev": ["pytest", "pytest-cov"]},
+    extras_require={"dev": ["pytest", "pytest-cov", "pycodestyle"]},
     license="MIT license",
     zip_safe=False,
     keywords=["deep learning",
@@ -24,5 +24,5 @@ setup(
               "genomics"],
     test_suite="tests",
     include_package_data=True,
-    tests_require=["pytest", "pytest-cov"],
+    tests_require=["pytest", "pytest-cov", "pycodestyle"],
 )
