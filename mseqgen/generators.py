@@ -63,8 +63,8 @@ import re
 
 from mseqgen import sequtils
 from mseqgen import quietexception
+from mseqgen import utils
 from queue import Queue
-from scipy.ndimage import gaussian_filter1d
 from threading import Thread
 
 
@@ -713,15 +713,20 @@ class MSequenceGenerator:
                 if batch is not None:
                     yield batch
                 else: 
+                    logging.debug("Found None batch")
                     num_skipped += 1
 
             # wait for batch generation processes to finish once the
             # required number of batches have been yielded
             for j in range(self._num_threads):
                 if procs[j] is not None:
+                    logging.debug("{} waiting to join process {}".format(
+                        self._mode, j))
                     procs[j].join()
                     
                 if threads[j] is not None:
+                    logging.debug("{} waiting to join thread {}".format(
+                        self._mode, j))
                     threads[j].join()
                 
                 logging.debug("{} join complete for process {}".format(
@@ -735,6 +740,8 @@ class MSequenceGenerator:
                     num_skipped))
             
             # wait here for the signal 
+            logging.debug("{} waiting for signal to start next epoch".format(
+                self._mode))
             while (not self._ready_for_next_epoch) and (not self._stop):
                 continue
 
@@ -1056,17 +1063,13 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         # we can perform smoothing on the entire batch of control values
         for i in range(len(self._control_smoothing)):
             
-            # compute truncate value for scipy gaussian_filter1d
-            # "Truncate the filter at this many standard deviations"
             sigma = self._control_smoothing[i][0]
             window_size = self._control_smoothing[i][1]
-            truncate = (((window_size - 1) / 2) - 0.5) / sigma
                 
             # its i+1 because at index 0 we have the original 
             # control  
-            control_profile[:, :, i + 1] = gaussian_filter1d(
-                control_profile[:, :, i + 1], sigma=sigma,
-                truncate=truncate)
+            control_profile[:, :, i + 1] = utils.gaussian1D_smoothing(
+                control_profile[:, :, i + 1], sigma, window_size)
 
         # log of sum of control profile without smoothing (idx = 0)
         control_profile_counts = np.log(
