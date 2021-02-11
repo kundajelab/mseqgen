@@ -58,6 +58,6 @@ def gaussian1D_smoothing(input_array, sigma, window_size):
     """
 
     # compute truncate value (#standard_deviations)
-    truncate = (((window_size - 1)/2)-0.5)/sigma
+    truncate = (((window_size - 1) / 2) - 0.5) / sigma
     
     return gaussian_filter1d(input_array, sigma=sigma, truncate=truncate)

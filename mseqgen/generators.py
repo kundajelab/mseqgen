@@ -469,8 +469,7 @@ class MSequenceGenerator:
         """
         raise NotImplementedError("Method not implemented. Used a "
                                   "derived class.")
-        
-    
+
     def _get_negative_batch(self):
         """
             Get chrom positions for the negative samples using
@@ -1110,7 +1109,8 @@ def list_generator_names():
         generator_names.append(result.group(1))
 
     return generator_names
-        
+
+
 def find_generator_by_name(generator_name):
     """
         Get the sequence generator class name given its name
