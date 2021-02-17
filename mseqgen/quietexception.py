@@ -5,6 +5,7 @@ A custom class for exceptions without printing the traceback
 from __future__ import print_function
 import sys
 
+
 def eprint(*args, **kwargs):
     """ 
         print function to print to standard error
