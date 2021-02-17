@@ -2,7 +2,14 @@
 A custom class for exceptions without printing the traceback
 """
 
+from __future__ import print_function
 import sys
+
+def eprint(*args, **kwargs):
+    """ 
+        print function to print to standard error
+    """
+    print(*args, file=sys.stderr, **kwargs)
 
 
 class QuietException(Exception):
@@ -25,7 +32,7 @@ def quiet_hook(kind, message, traceback):
    
     if kind.__name__ == "QuietException":
         # only print message
-        print('ERROR: {}'.format(message))  
+        eprint('ERROR: {}'.format(message))  
     else:
         # print error type, message & traceback
         sys.__excepthook__(kind, message, traceback)  
