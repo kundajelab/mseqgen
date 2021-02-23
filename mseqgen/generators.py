@@ -921,8 +921,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         control_profile_counts = np.zeros((coords.shape[0]), 
                                           dtype=np.float32)
 
-        # in 'test' mode we only need the sequence & the control
-        if self._mode == "train" or self._mode == "val":
+        # in 'test' mode we pass the true profile as part of the 
+        # returned tuple from the batch generator
+        if self._mode == "train" or self._mode == "val" or self._mode == "test":
             # (batch_size, output_len, #tasks)
             profile = np.zeros((coords.shape[0], self._output_flank * 2, 
                                 self._num_tasks), dtype=np.float32)
@@ -956,8 +957,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 control_files[task] = pyBigWig.open(
                     self._tasks[task]['control'])
 
-        # in 'test' mode we only need the sequence & the control
-        if self._mode == "train" or self._mode == "val":
+        # in 'test' mode we pass the true profile as part of the 
+        # returned tuple from the batch generator
+        if self._mode == "train" or self._mode == "val" or self._mode == "test":
             # open all the required bigwig files and store the file 
             # objects in a dictionary
             signal_files = {}
@@ -1017,8 +1019,11 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     control_profile[rowCnt, :, :] += np.expand_dims(
                         control_values, axis=1)
                 
-                # in 'test' mode we only need the sequence & the control
-                if self._mode == "train" or self._mode == "val":
+                # in 'test' mode we pass the true profile as part of the 
+                # returned tuple from the batch generator
+                if self._mode == "train" or \
+                    self._mode == "val"  or \
+                    self._mode == "test":
                     # Step 3. get the signal values
                     # fetch values using the pyBigWig file objects
                     values = signal_files[task].values(chrom, start, end)
@@ -1074,7 +1079,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         control_profile_counts = np.log(
             np.sum(control_profile[:, :, 0], axis=-1) + 1)
         
-        # in 'test' mode we only need the sequence & the control
+        # in 'train' and 'val' mode we need input and output 
+        # dictionaries
         if self._mode == "train" or self._mode == 'val':
             # we can now sum the profiles for the entire batch
             profile_counts = np.log(np.sum(profile, axis=1) + 1)
@@ -1086,9 +1092,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     {'profile_predictions': profile, 
                      'logcount_predictions': profile_counts})
 
-        # in 'test' mode return a tuple of cordinates & the
-        # input dictionary
-        return (coordinates, 
+        # in 'test' mode return a tuple of cordinates, true profiles
+        # & the input dictionary
+        return (coordinates, profile,
                 {'sequence': X, 
                  'control_profile': control_profile,
                  'control_logcount': control_profile_counts})
