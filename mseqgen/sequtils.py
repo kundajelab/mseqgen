@@ -230,7 +230,7 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
     # drop the duplicate rows, i.e. the peaks that get duplicated
     # for the plus and minus strand tasks
     if drop_duplicates:
-        allPeaks = allPeaks.drop_duplicates()
+        allPeaks = allPeaks.drop_duplicates(ignore_index=True)
         
     return allPeaks
 
@@ -251,6 +251,37 @@ def roundToMultiple(x, y):
     if r > x:
         r = r - y
     return r
+
+
+def round_to_multiple(x, y, smallest=False): 
+    """
+        Return the largest multiple of y <= x or 
+        smallest multiple of y >= x
+        
+        Args:
+            x (int): the number to round up to
+            y (int): the multiplier
+            smallest (boolean): set to True to return smallest 
+                multiple of y >= x
+            
+        Returns:
+            int: if 'smallest' is False then largest multiple of y <= x, 
+                else smallest multiple of y >= x
+
+    """
+    # remainder
+    val = x % y
+
+    # x is a multiple of y
+    if val == 0:
+        return x
+    
+    if smallest:
+        # subtract remainder and the multiplier
+        return (x - val) + y
+    else:
+        # subtract remainder
+        return (x - val)
 
 
 def one_hot_encode(sequences):
