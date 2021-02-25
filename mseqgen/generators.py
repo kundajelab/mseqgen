@@ -430,8 +430,8 @@ class MSequenceGenerator:
         pad_size = exact_multiple - len(self._samples)
         self._samples = self._samples.append(self._samples.sample(pad_size),
                                              ignore_index=True)
-        logging.info("Padding samples with {} randomly selected rows "
-                     "to facilitate speedy batch generation".format(pad_size))
+        logging.info("mode '{}': Data size (with {} padded rows) - {}".format(
+            self._mode, pad_size, len(self._samples)))
         
     def len(self):
         """
@@ -750,18 +750,23 @@ class MSequenceGenerator:
                 logging.warn("\n{} batches skipped due to data errors".format(
                     num_skipped))
             
+            # if we reach the required number of epochs set stop
+            # Flag to True
+            if (i + 1) == self._epochs:
+                self.set_stop()
+            
             # wait here for the signal 
             logging.debug("{} waiting for signal to start next epoch".format(
                 self._mode))
             while (not self._ready_for_next_epoch) and (not self._stop):
                 continue
-
-            logging.debug("{} Ready for next epoch".format(self._mode))
             
             if self._stop:
                 logging.debug("{} Terminating batch generation".format(
                     self._mode))
                 break
+
+            logging.debug("{} Ready for next epoch".format(self._mode))
 
 
 class MBPNetSequenceGenerator(MSequenceGenerator):
