@@ -421,18 +421,61 @@ class MSequenceGenerator:
             #: columns = ['chrom', 'pos']
             self._samples = samples
             
+        #: size of the input samples before padding
+        self._unpadded_samples_size = len(self._samples)
+        
         # pad self._samples dataframe with randomly selected rows 
         # so that the length of the dataframe is an exact multiple of
         # num_threads * batch_size. We do this so we can equally divide
-        # the batches across several threads 
+        # the batches across several batch generation threads 
         exact_multiple = sequtils.round_to_multiple(
             len(self._samples), num_threads * batch_size, smallest=True)
         pad_size = exact_multiple - len(self._samples)
-        self._samples = self._samples.append(self._samples.sample(pad_size),
-                                             ignore_index=True)
+        
+        if pad_size > 0:
+            # If the pad_size > #self._samples, then number of data
+            # samples for the set (train or val) is significantly less
+            # than num_threads * batch_size, so we'll have to sample 
+            # the padded rows with replacement
+            replace = False
+            if pad_size > len(self._samples):
+                replace = True
+                logging.info("mode '{}': Sampling with replacement for "
+                             "data padding")
+            
+            self._samples = self._samples.append(
+                self._samples.sample(pad_size, replace=replace),
+                ignore_index=True)
+
+        #: size of the input samples after padding
+        self._samples_size = len(self._samples)
+        
         logging.info("mode '{}': Data size (with {} padded rows) - {}".format(
             self._mode, pad_size, len(self._samples)))
         
+    def get_unpadded_samples_len(self):
+        """
+            The number of data samples before padding
+            
+            Returns:
+                
+                int: number of data samples before padding
+        """
+        
+        return self._unpadded_samples_size
+    
+    def get_samples_len(self):
+        """
+            The number of data samples used in batch generation
+            (after padding)
+            
+            Returns:
+                
+                int: number of data samples used in batch generation
+        """
+        
+        return self._samples_size
+    
     def len(self):
         """
             The number of batches per epoch
