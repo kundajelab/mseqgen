@@ -453,6 +453,18 @@ class MSequenceGenerator:
         logging.info("mode '{}': Data size (with {} padded rows) - {}".format(
             self._mode, pad_size, len(self._samples)))
         
+    def get_input_tasks(self):
+        """
+            The dictionary of tasks loaded from the json file
+            input_config['data']
+            
+            Returns:
+                
+                dict: dictionary of input tasks
+        """
+        
+        return self._tasks
+    
     def get_unpadded_samples_len(self):
         """
             The number of data samples before padding
