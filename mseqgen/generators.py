@@ -1106,7 +1106,10 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                         values = np.nan_to_num(values)
 
                     # update row in batch with the signal values
-                    profile[rowCnt, :, task_id * 2 + strand] = values
+                    if self._stranded:
+                        profile[rowCnt, :, task_id * 2 + strand] = values
+                    else:
+                        profile[rowCnt, :, task_id] = values
 
             rowCnt += 1
         
