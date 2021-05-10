@@ -336,22 +336,15 @@ class MSequenceGenerator:
         self._negative_sampling_rate = \
             batch_gen_params['negative_sampling_rate']
         
-        #: if True reverse complement augmentation will be applied to
+        #: if True, reverse complement augmentation will be applied to
         #: each batch of data. The size of the generated batch is 
         #: doubled (i.e batch_size*2 or if negative samples are added 
         #: then (batch_size + num_negative_samples)*2). Ignored if
         #: --mode is not 'train'
         self._rev_comp_aug = batch_gen_params['rev_comp_aug']
         
+        #: if True, shuffle the data before the beginning of the epoch
         self._shuffle = batch_gen_params['shuffle']
-        
-        # control batch generation for next epoch
-        # if the value is not set to True, batches are not generated
-        # Use an external controller to set value to True/False
-        self._ready_for_next_epoch = False
-        
-        # (early) stopping flag
-        self._stop = False
         
         if self._sampling_mode == 'peaks':
             # get a pandas dataframe for the peak positions
@@ -498,28 +491,6 @@ class MSequenceGenerator:
         
         return self._samples.shape[0] // self._batch_size
    
-    def set_ready_for_next_epoch(self):
-        """ 
-            Set the variable that controls batch generation for the
-            next epoch to True
-           
-        """
-        self._ready_for_next_epoch = True
-
-    def set_stop(self):
-        """ 
-            Set stop flag to True
-        
-        """
-        self._stop = True
-
-    def set_early_stopping(self):
-        """ 
-            Set early stopping flag to True
-          
-        """
-        self.set_stop()
-
     def _generate_batch(self, coords):
         """ 
             Generate one batch of inputs and outputs
@@ -746,82 +717,54 @@ class MSequenceGenerator:
 
         return procs, threads, q, sum(num_batches)
 
-    def gen(self):
+    def gen(self, epoch):
         """
-            Generator function to yield batches of data
+            Generator function to yield one batch of data
+            
+            Args:
+                epoch (int): the epoch number
 
         """
         
-        for i in range(self._epochs):
-            # set this flag to False and wait for the
-            self._ready_for_next_epoch = False
-            
-            logging.debug("{} ready set to FALSE".format(self._mode))
-            
-            if self._shuffle:
-                # shuffle at the beginning of each epoch
-                data = self._samples.sample(frac=1.0)
-                logging.debug("{} Shuffling complete".format(self._mode))
-            else:
-                data = self._samples
+        if self._shuffle:
+            # shuffle at the beginning of each epoch
+            data = self._samples.sample(frac=1.0)
+            logging.debug("{} Shuffling complete".format(self._mode))
+        else:
+            data = self._samples
 
-            # spawn multiple processes to generate batches of data in
-            # parallel for each epoch
-            procs, threads, q, total_batches = self._epoch_run(data)
+        # spawn multiple processes to generate batches of data in
+        # parallel for each epoch
+        procs, threads, q, total_batches = self._epoch_run(data)
 
-            logging.debug("{} Batch generation for epoch {} started".format(
-                self._mode, i + 1))
-            
-            # yield the correct number of batches for each epoch
-            num_skipped = 0
-            for j in range(total_batches):      
-                batch = q.get()
-                if batch is not None:
-                    yield batch
-                else: 
-                    logging.debug("Found None batch")
-                    num_skipped += 1
+        logging.debug("{} Batch generation for epoch {} started".format(
+            self._mode, epoch))
 
-            # wait for batch generation processes to finish once the
-            # required number of batches have been yielded
-            for j in range(self._num_threads):
-                if procs[j] is not None:
-                    logging.debug("{} waiting to join process {}".format(
-                        self._mode, j))
-                    procs[j].join()
-                    
-                if threads[j] is not None:
-                    logging.debug("{} waiting to join thread {}".format(
-                        self._mode, j))
-                    threads[j].join()
-                
-                logging.debug("{} join complete for process {}".format(
+        # yield the correct number of batches for each epoch
+        for j in range(total_batches):      
+            batch = q.get()
+            yield batch
+
+        # wait for batch generation processes to finish once the
+        # required number of batches have been yielded
+        for j in range(self._num_threads):
+            if procs[j] is not None:
+                logging.debug("{} waiting to join process {}".format(
                     self._mode, j))
-            
-            logging.debug("{} Finished join for epoch {}".format(
-                self._mode, i + 1))
-            
-            if num_skipped > 0:
-                logging.warn("\n{} batches skipped due to data errors".format(
-                    num_skipped))
-            
-            # if we reach the required number of epochs set stop
-            # Flag to True
-            if (i + 1) == self._epochs:
-                self.set_stop()
-            
-            # wait here for the signal 
-            logging.debug("{} waiting for signal to start next epoch".format(
-                self._mode))
-            while (not self._ready_for_next_epoch) and (not self._stop):
-                continue
-            
-            if self._stop:
-                logging.debug("{} Terminating batch generation".format(
-                    self._mode))
-                break
+                procs[j].join()
 
-            logging.debug("{} Ready for next epoch".format(self._mode))
+            if threads[j] is not None:
+                logging.debug("{} waiting to join thread {}".format(
+                    self._mode, j))
+                threads[j].join()
+
+            logging.debug("{} join complete for process {}".format(
+                self._mode, j))
+
+        logging.debug("{} Finished join for epoch {}".format(
+            self._mode, epoch))
+
+        logging.debug("{} Ready for next epoch".format(self._mode))
 
 
 class MBPNetSequenceGenerator(MSequenceGenerator):
