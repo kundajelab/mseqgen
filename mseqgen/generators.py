@@ -1076,19 +1076,18 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     profile[:rowCnt, :, :], self._stranded)
 
         # Step 5. one hot encode all the sequences in the batch 
-        X = sequtils.one_hot_encode(sequences)
-
-        # if the input sequences are of unequal length then None
-        # is returned
-        if X is None:
-            return None
- 
+        if len(sequences) == profile.shape[0]:
+            X = sequtils.one_hot_encode(sequences, self._input_flank * 2)
+        else:
+            raise quietexception.QuietException(
+                "Unable to generate enough sequences for the batch")
+                
         # we can perform smoothing on the entire batch of control values
         for i in range(len(self._control_smoothing)):
-            
+
             sigma = self._control_smoothing[i][0]
             window_size = self._control_smoothing[i][1]
-                
+
             # its i+1 because at index 0 we have the original 
             # control  
             control_profile[:, :, i + 1] = utils.gaussian1D_smoothing(
