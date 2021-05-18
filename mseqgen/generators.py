@@ -567,6 +567,7 @@ class MSequenceGenerator:
                 break
                 
             batch_df = coords_df.iloc[i:i + self._batch_size]
+            batch_df['status'] = 1
             
             # add equal number of negative samples
             if self._mode == "train" and \
@@ -574,6 +575,7 @@ class MSequenceGenerator:
                     self._negative_sampling_rate > 0.0:
                     
                 neg_batch = self._get_negative_batch()
+                neg_batch['status'] = -1
                 batch_df = pd.concat([batch_df, neg_batch])
             
             # generate a batch of one hot encoded sequences and 
@@ -911,9 +913,10 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             values as a tuple.
             
             Args:
-                coords (pandas.DataFrame): dataframe with 'chrom' and
-                    'pos' columns specifying the chromosome and the 
-                    coordinate
+                coords (pandas.DataFrame): dataframe with 'chrom', 
+                    'pos' & 'status' columns specifying the chromosome,
+                    thecoordinate and whether the loci is a positive(1)
+                    or negative sample(-1)
                 
             Returns:
                 tuple: 
@@ -1104,7 +1107,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             profile_counts = np.log(np.sum(profile, axis=1) + 1)
     
             # return a tuple of input and output dictionaries
-            return ({'sequence': X, 
+            return ({'status': coords['status'].values,
+                     'sequence': X, 
                      'control_profile': control_profile, 
                      'control_logcount': control_profile_counts},
                     {'profile_predictions': profile, 
