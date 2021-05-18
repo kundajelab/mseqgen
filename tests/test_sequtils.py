@@ -171,17 +171,15 @@ def test_one_hot_encode():
                     [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
                     [[0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0], [0, 1, 0, 0]]]
     
-    res = sequtils.one_hot_encode(sequences)
+    res = sequtils.one_hot_encode(sequences, 4)
 
     np.testing.assert_array_equal(res, np.array(expected_res))
     
     # list of unequal length sequences
     sequences = ['ACGN', 'AAGG', 'CTCTF', 'NNNN', 'CCCC']
     
-    # the expected one hot encoding
-    expected_res = None
-    
-    res = sequtils.one_hot_encode(sequences)
+    # this will truncate the 3rd sequence
+    res = sequtils.one_hot_encode(sequences, 4)
 
     np.testing.assert_array_equal(res, expected_res)
 

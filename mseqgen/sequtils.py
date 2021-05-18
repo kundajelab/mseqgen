@@ -333,7 +333,7 @@ def one_hot_encode(sequences, seq_length):
     
     # First, let's make sure all sequences are of equal length
     sequences = list(map(
-        fix_sequence_length, sequences, [seq_length]*len(sequences)))
+        fix_sequence_length, sequences, [seq_length] * len(sequences)))
 
     # Step 1. convert sequence list into a single string
     _sequences = ''.join(sequences)
