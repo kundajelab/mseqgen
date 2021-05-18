@@ -567,7 +567,8 @@ class MSequenceGenerator:
                 break
                 
             batch_df = coords_df.iloc[i:i + self._batch_size]
-            batch_df.loc[:, 'status'] = 1
+            batch_df = batch_df.copy()
+            batch_df['status'] = 1
             
             # add equal number of negative samples
             if self._mode == "train" and \
