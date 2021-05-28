@@ -1108,7 +1108,16 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             profile_counts = np.log(np.sum(profile, axis=1) + 1)
     
             # return a tuple of input and output dictionaries
-            return ({'status': coords['status'].values,
+            # 'coordinates' and 'status are not inputs to the model,
+            # so you will see a warning about unused inputs while
+            # training. It's safe to ignore the warning
+            # We pass 'coordinates' so we can track the exact
+            # coordinates of the inputs (because jitter is random)
+            # 'status' refers to whether the data sample is a +ve (1)
+            # or -ve (-1) example and is used by the attribution
+            # prior loss function
+            return ({'coordinates': coordinates,
+                     'status': coords['status'].values,
                      'sequence': X, 
                      'control_profile': control_profile, 
                      'control_logcount': control_profile_counts},
