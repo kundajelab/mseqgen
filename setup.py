@@ -14,7 +14,7 @@ setup(
     author_email="zahoor@stanford.edu",
     url="https://github.com/kundajelab/mseqgen",
     packages=find_packages(),
-    install_requires=["tensorflow-gpu==2.4.1", "numpy", "pandas", "scipy",
+    install_requires=["tensorflow-gpu==2.5.0", "numpy", "pandas", "scipy",
                       "deeptools", "pyfaidx"],
     extras_require={"dev": ["pytest", "pytest-cov", "pycodestyle"]},
     license="MIT license",
