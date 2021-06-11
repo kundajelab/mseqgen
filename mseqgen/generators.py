@@ -67,6 +67,7 @@ from mseqgen import utils
 from queue import Queue
 from threading import Thread
 
+
 class MSequenceGenerator:
     
     """ Multi task batch data generation for training deep neural
@@ -886,9 +887,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         
     """
 
-    def __init__(self, input_config, batch_gen_params, bpnet_params,
-                 reference_genome, chrom_sizes, chroms, num_threads=10, 
-                 epochs=100, batch_size=64, samples=None):
+    def __init__(self, input_config, batch_gen_params, reference_genome, 
+                 chrom_sizes, chroms, num_threads=10, epochs=100, 
+                 batch_size=64, samples=None, **kwargs):
         
         # name of the generator class
         self.name = "BPNet"
@@ -898,10 +899,14 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                          chrom_sizes, chroms, num_threads, epochs, batch_size, 
                          samples)
         
+        if 'control_smoothing' not in kwargs:
+            raise NoTracebackException(
+                "Key not Found: missing 'control_smoothing' parameter")
+            
         #: nested list of gaussiam smoothing parameters. Each inner list
         #: has two values - [sigma, window_size] for supplemental
         #: control control tracks
-        self._control_smoothing = bpnet_params['control_smoothing']
+        self._control_smoothing = kwargs['control_smoothing']
 
     def _generate_batch(self, coords):
         """Generate one batch of inputs and outputs for training BPNet
