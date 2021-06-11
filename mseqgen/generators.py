@@ -62,7 +62,7 @@ import random
 import re
 
 from mseqgen import sequtils
-from mseqgen import quietexception
+from mseqgen.exceptionhandler import NoTracebackException
 from mseqgen import utils
 from queue import Queue
 from threading import Thread
@@ -259,7 +259,7 @@ class MSequenceGenerator:
         
         # make sure the input_data json file exists
         if not os.path.isfile(input_config['data']):
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "File not found: {} OR you may have accidentally "
                 "specified a directory path.".format(input_config['data']))
         
@@ -269,20 +269,20 @@ class MSequenceGenerator:
                 #: dictionary of tasks for training
                 self._tasks = json.loads(inp_json.read())
             except json.decoder.JSONDecodeError:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Unable to load json file {}. Valid json expected. "
                     "Check the file for syntax errors.".format(
                         input_config['data']))
 
         # check if the reference genome file exists
         if not os.path.isfile(reference_genome):
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "File not found: {} OR you may have accidentally "
                 "specified a directory path.", reference_genome)
         
         # check if the chrom_sizes file exists
         if not os.path.isfile(chrom_sizes):
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "File not found: {} OR you may have accidentally "
                 "specified a directory path.".format(chrom_sizes))
 
@@ -359,12 +359,12 @@ class MSequenceGenerator:
         elif self._sampling_mode == 'sequential':
             
             if 'num_positions' not in batch_gen_params:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Key not found in batch_gen_params_json: 'num_positions'. " 
                     "Required for sequential sampling mode")
 
             if 'step_size' not in batch_gen_params:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Key not found in batch_gen_params_json: 'step_size'. " 
                     "Required for sequential sampling mode")
 
@@ -383,7 +383,7 @@ class MSequenceGenerator:
         elif self._sampling_mode == 'random':
             
             if 'num_positions' not in batch_gen_params:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Key not found in batch_gen_params_json: 'num_positions'. "
                     "Required for random sampling mode")
             
@@ -400,13 +400,13 @@ class MSequenceGenerator:
             
             # check if the samples parameter has been provided
             if samples is None:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "If sampling_mode is 'manual', 'samples' parameter"
                     "has to be set. Found None.")
             
             if not isinstance(samples, pandas.Dataframe) or \
                     set(samples.columns.tolist()) != set(['chrom', 'pos']):
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "samples' parameter should be a valid pandas.Dataframe"
                     "with two columns 'chrom' and 'pos'")
                 
@@ -839,21 +839,6 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     sampling_mode is "peaks" or "random", has no effect if
                     present.
 
-            bpnet_params (dictionary): python dictionary containing
-                parameters specific to BPNet. Contains the following
-                keys - 
-                
-                *name (str)*
-                    model architecture name
-                
-                *filters (int)*
-                    number of filters for BPNet
-                
-                *control_smoothing (list)*
-                    nested list of gaussiam smoothing parameters. Each 
-                    inner list has two values - [sigma, window_size] for 
-                    supplemental control tracks
-
             reference_genome (str): the path to the reference genome 
                 fasta file
                 
@@ -876,6 +861,20 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 parameter if you set batch_gen_params['sampling_mode']
                 to 'manual'. default = None
 
+            kwargs (dictionary): python dictionary containing
+                parameters specific to BPNet. Contains the following
+                keys - 
+                
+                *name (str)*
+                    model architecture name
+                
+                *filters (int)*
+                    number of filters for BPNet
+                
+                *control_smoothing (list)*
+                    nested list of gaussiam smoothing parameters. Each 
+                    inner list has two values - [sigma, window_size] for 
+                    supplemental control tracks
         **Members**
         
         IGNORE_FOR_SPHINX_DOCS:
@@ -887,9 +886,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         
     """
 
-    def __init__(self, input_config, batch_gen_params, bpnet_params,
-                 reference_genome, chrom_sizes, chroms, num_threads=10, 
-                 epochs=100, batch_size=64, samples=None):
+    def __init__(self, input_config, batch_gen_params, reference_genome, 
+                 chrom_sizes, chroms, num_threads=10, epochs=100, 
+                 batch_size=64, samples=None, **kwargs):
         
         # name of the generator class
         self.name = "BPNet"
@@ -899,10 +898,14 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                          chrom_sizes, chroms, num_threads, epochs, batch_size, 
                          samples)
         
+        if 'control_smoothing' not in kwargs:
+            raise NoTracebackException(
+                "Key not Found: missing 'control_smoothing' parameter")
+            
         #: nested list of gaussiam smoothing parameters. Each inner list
         #: has two values - [sigma, window_size] for supplemental
         #: control control tracks
-        self._control_smoothing = bpnet_params['control_smoothing']
+        self._control_smoothing = kwargs['control_smoothing']
 
     def _generate_batch(self, coords):
         """Generate one batch of inputs and outputs for training BPNet
@@ -976,7 +979,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             if 'control' in self._tasks[task]:
                 control_files[task] = pyBigWig.open(
                     self._tasks[task]['control'])
-
+        
         # in 'test' mode we pass the true profile as part of the 
         # returned tuple from the batch generator
         if self._mode == "train" or self._mode == "val" or \
@@ -1083,7 +1086,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         if len(sequences) == profile.shape[0]:
             X = sequtils.one_hot_encode(sequences, self._input_flank * 2)
         else:
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "Unable to generate enough sequences for the batch")
                 
         # we can perform smoothing on the entire batch of control values
@@ -1108,7 +1111,16 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             profile_counts = np.log(np.sum(profile, axis=1) + 1)
     
             # return a tuple of input and output dictionaries
-            return ({'status': coords['status'].values,
+            # 'coordinates' and 'status are not inputs to the model,
+            # so you will see a warning about unused inputs while
+            # training. It's safe to ignore the warning
+            # We pass 'coordinates' so we can track the exact
+            # coordinates of the inputs (because jitter is random)
+            # 'status' refers to whether the data sample is a +ve (1)
+            # or -ve (-1) example and is used by the attribution
+            # prior loss function
+            return ({'coordinates': coordinates,
+                     'status': coords['status'].values,
                      'sequence': X, 
                      'control_profile': control_profile, 
                      'control_logcount': control_profile_counts},
@@ -1122,7 +1134,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                  'control_profile': control_profile,
                  'control_logcount': control_profile_counts})
 
-       
+
 def list_generator_names():
     """
        List all available sequence generators that are derived

@@ -13,7 +13,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-class QuietException(Exception):
+class NoTracebackException(Exception):
     """
         An exception that when raised results in the error message
         being printed without the traceback
@@ -21,7 +21,7 @@ class QuietException(Exception):
     pass
 
 
-def quiet_hook(kind, message, traceback):
+def notraceback_hook(kind, message, traceback):
     """
         Exception hook that reroutes all exceptions through this method
     
@@ -31,7 +31,7 @@ def quiet_hook(kind, message, traceback):
             traceback (traceback): traceback object
     """
    
-    if kind.__name__ == "QuietException":
+    if kind.__name__ == "NoTracebackException":
         # only print message
         eprint('ERROR: {}'.format(message))  
     else:
@@ -40,4 +40,4 @@ def quiet_hook(kind, message, traceback):
 
 
 # customize handling of exceptions by assigning the exception hook
-sys.excepthook = quiet_hook
+sys.excepthook = notraceback_hook
