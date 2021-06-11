@@ -62,11 +62,10 @@ import random
 import re
 
 from mseqgen import sequtils
-from mseqgen import quietexception
+from mseqgen.exceptionhandler import NoTracebackException
 from mseqgen import utils
 from queue import Queue
 from threading import Thread
-
 
 class MSequenceGenerator:
     
@@ -259,7 +258,7 @@ class MSequenceGenerator:
         
         # make sure the input_data json file exists
         if not os.path.isfile(input_config['data']):
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "File not found: {} OR you may have accidentally "
                 "specified a directory path.".format(input_config['data']))
         
@@ -269,20 +268,20 @@ class MSequenceGenerator:
                 #: dictionary of tasks for training
                 self._tasks = json.loads(inp_json.read())
             except json.decoder.JSONDecodeError:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Unable to load json file {}. Valid json expected. "
                     "Check the file for syntax errors.".format(
                         input_config['data']))
 
         # check if the reference genome file exists
         if not os.path.isfile(reference_genome):
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "File not found: {} OR you may have accidentally "
                 "specified a directory path.", reference_genome)
         
         # check if the chrom_sizes file exists
         if not os.path.isfile(chrom_sizes):
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "File not found: {} OR you may have accidentally "
                 "specified a directory path.".format(chrom_sizes))
 
@@ -359,12 +358,12 @@ class MSequenceGenerator:
         elif self._sampling_mode == 'sequential':
             
             if 'num_positions' not in batch_gen_params:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Key not found in batch_gen_params_json: 'num_positions'. " 
                     "Required for sequential sampling mode")
 
             if 'step_size' not in batch_gen_params:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Key not found in batch_gen_params_json: 'step_size'. " 
                     "Required for sequential sampling mode")
 
@@ -383,7 +382,7 @@ class MSequenceGenerator:
         elif self._sampling_mode == 'random':
             
             if 'num_positions' not in batch_gen_params:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "Key not found in batch_gen_params_json: 'num_positions'. "
                     "Required for random sampling mode")
             
@@ -400,13 +399,13 @@ class MSequenceGenerator:
             
             # check if the samples parameter has been provided
             if samples is None:
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "If sampling_mode is 'manual', 'samples' parameter"
                     "has to be set. Found None.")
             
             if not isinstance(samples, pandas.Dataframe) or \
                     set(samples.columns.tolist()) != set(['chrom', 'pos']):
-                raise quietexception.QuietException(
+                raise NoTracebackException(
                     "samples' parameter should be a valid pandas.Dataframe"
                     "with two columns 'chrom' and 'pos'")
                 
@@ -976,7 +975,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             if 'control' in self._tasks[task]:
                 control_files[task] = pyBigWig.open(
                     self._tasks[task]['control'])
-
+        
         # in 'test' mode we pass the true profile as part of the 
         # returned tuple from the batch generator
         if self._mode == "train" or self._mode == "val" or \
@@ -1083,7 +1082,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         if len(sequences) == profile.shape[0]:
             X = sequtils.one_hot_encode(sequences, self._input_flank * 2)
         else:
-            raise quietexception.QuietException(
+            raise NoTracebackException(
                 "Unable to generate enough sequences for the batch")
                 
         # we can perform smoothing on the entire batch of control values
