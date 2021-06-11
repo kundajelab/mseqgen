@@ -839,21 +839,6 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     sampling_mode is "peaks" or "random", has no effect if
                     present.
 
-            bpnet_params (dictionary): python dictionary containing
-                parameters specific to BPNet. Contains the following
-                keys - 
-                
-                *name (str)*
-                    model architecture name
-                
-                *filters (int)*
-                    number of filters for BPNet
-                
-                *control_smoothing (list)*
-                    nested list of gaussiam smoothing parameters. Each 
-                    inner list has two values - [sigma, window_size] for 
-                    supplemental control tracks
-
             reference_genome (str): the path to the reference genome 
                 fasta file
                 
@@ -876,6 +861,20 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 parameter if you set batch_gen_params['sampling_mode']
                 to 'manual'. default = None
 
+            kwargs (dictionary): python dictionary containing
+                parameters specific to BPNet. Contains the following
+                keys - 
+                
+                *name (str)*
+                    model architecture name
+                
+                *filters (int)*
+                    number of filters for BPNet
+                
+                *control_smoothing (list)*
+                    nested list of gaussiam smoothing parameters. Each 
+                    inner list has two values - [sigma, window_size] for 
+                    supplemental control tracks
         **Members**
         
         IGNORE_FOR_SPHINX_DOCS:
@@ -1135,7 +1134,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                  'control_profile': control_profile,
                  'control_logcount': control_profile_counts})
 
-       
+
 def list_generator_names():
     """
        List all available sequence generators that are derived
