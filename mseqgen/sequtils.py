@@ -71,7 +71,7 @@ import os
 import pandas as pd
 
 from collections import OrderedDict
-from mseqgen.exceptionhandler import NoTracebackException
+from mseqgen import quietexception
 
 
 def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
@@ -103,7 +103,7 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
     """
     
     if mode == 'random' and num_positions == -1:
-        raise NoTracebackException(
+        raise quietexception.QuietException(
             "Incompatible parameter pairing: 'mode' = random, "
             "'num_positions' = -1")
 
