@@ -1119,7 +1119,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             # 'status' refers to whether the data sample is a +ve (1)
             # or -ve (-1) example and is used by the attribution
             # prior loss function
-            return ({'coordinates': coordinates,
+            return ({#'coordinates': coordinates,
                      'status': coords['status'].values,
                      'sequence': X, 
                      'control_profile': control_profile, 
