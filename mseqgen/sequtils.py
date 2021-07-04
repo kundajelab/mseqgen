@@ -186,46 +186,51 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
     # initialize an empty dataframe
     allPeaks = pd.DataFrame()
 
-    for task in tasks:   
-        peaks_df = pd.read_csv(tasks[task]['peaks'], 
-                               sep='\t', header=None, 
-                               names=['chrom', 'st', 'end', 'name', 'score',
-                                      'strand', 'signal', 'p', 'q', 'summit'])
+    # we concatenate all the peaks from across all the tasks
+    for task in tasks:
+        # each task could have multiple peaks files in the 'source' list
+        for peaks_file in tasks[task]['loci']['source']:
+            
+            peaks_df = pd.read_csv(
+                peaks_file, sep='\t', header=None, 
+                names=['chrom', 'st', 'end', 'name', 'score', 'strand', 
+                       'signal', 'p', 'q', 'summit'])
 
-        # keep only those rows corresponding to the required 
-        # chromosomes
-        peaks_df = peaks_df[peaks_df['chrom'].isin(chroms)]
+            # keep only those rows corresponding to the required 
+            # chromosomes
+            peaks_df = peaks_df[peaks_df['chrom'].isin(chroms)]
 
-        # create new column for peak pos
-        peaks_df['pos'] = peaks_df['st'] + peaks_df['summit']
+            # create new column for peak pos
+            peaks_df['pos'] = peaks_df['st'] + peaks_df['summit']
 
-        # compute left flank coordinates of the input sequences 
-        # (including the allowed jitter)
-        peaks_df['flank_left'] = (peaks_df['pos'] - flank).astype(int)
+            # compute left flank coordinates of the input sequences 
+            # (including the allowed jitter)
+            peaks_df['flank_left'] = (peaks_df['pos'] - flank).astype(int)
 
-        # compute right flank coordinates of the input sequences 
-        # (including the allowed jitter)
-        peaks_df['flank_right'] = (peaks_df['pos'] + flank).astype(int)
+            # compute right flank coordinates of the input sequences 
+            # (including the allowed jitter)
+            peaks_df['flank_right'] = (peaks_df['pos'] + flank).astype(int)
 
-        # filter out rows where the left flank coordinate is < 0
-        peaks_df = peaks_df[peaks_df['flank_left'] >= 0]
+            # filter out rows where the left flank coordinate is < 0
+            peaks_df = peaks_df[peaks_df['flank_left'] >= 0]
 
-        # --->>> create a new column for chrom size
-        peaks_df["chrom_size"] = peaks_df['chrom'].apply(
-            lambda chrom: chrom_size_dict[chrom])
+            # --->>> create a new column for chrom size
+            peaks_df["chrom_size"] = peaks_df['chrom'].apply(
+                lambda chrom: chrom_size_dict[chrom])
 
-        # filter out rows where the right flank coordinate goes beyond
-        # chromosome size
-        peaks_df = peaks_df[peaks_df['flank_right'] <= peaks_df['chrom_size']]
+            # filter out rows where the right flank coordinate goes beyond
+            # chromosome size
+            peaks_df = peaks_df[
+                peaks_df['flank_right'] <= peaks_df['chrom_size']]
 
-        # sort based on chromosome number and right flank coordinate
-        peaks_df = peaks_df.sort_values(['chrom', 'flank_right']).reset_index(
-            drop=True)
+            # sort based on chromosome number and right flank coordinate
+            peaks_df = peaks_df.sort_values(
+                ['chrom', 'flank_right']).reset_index(drop=True)
 
-        # append to all peaks data frame
-        allPeaks = allPeaks.append(peaks_df[['chrom', 'pos']])
+            # append to all peaks data frame
+            allPeaks = allPeaks.append(peaks_df[['chrom', 'pos']])
 
-        allPeaks = allPeaks.reset_index(drop=True)
+            allPeaks = allPeaks.reset_index(drop=True)
     
     # drop the duplicate rows, i.e. the peaks that get duplicated
     # for the plus and minus strand tasks

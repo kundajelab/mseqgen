@@ -75,19 +75,8 @@ class MSequenceGenerator:
         geonmics assays
           
         Args:
-            input_config (dict): python dictionary with information 
-                about the input data. Contains the following keys -
-
-                *data (str)*
-                    path to the json file containing task information. 
-                    See README for more information on the format of  
-                    the json file
-                
-                *stranded (boolean)*
-                    True if data is stranded
-            
-                *has_control (boolean)*
-                    True if control data has been included 
+            tasks_json (str): path to the json file containing task
+                information, required keys - 'signal', 'loci', 'bias'
                 
             batch_gen_params (dictionary): python dictionary with batch
                 generation parameters. Contains the following keys - 
@@ -126,18 +115,6 @@ class MSequenceGenerator:
                 *mode (str)*
                     'train', 'val' or 'test'
                  
-                *num_positions" (int)*
-                    specify how many chromosome positions to sample if 
-                    sampling_mode is 'sequential' or 'random'. Can be 
-                    omitted if sampling_mode is "peaks", has no effect if
-                    present.
-                 
-                *step_size (int)*
-                    specify step size for sampling chromosome positions if 
-                    sampling_mode is "sequential". Can be omitted if 
-                    sampling_mode is "peaks" or "random", has no effect if
-                    present.
-
             reference_genome (str): the path to the reference genome 
                 fasta file
                 
@@ -149,38 +126,24 @@ class MSequenceGenerator:
             num_threads (int): number of parallel threads for batch
                 generation, default = 10
                 
-            epochs (int): number of iterations for looping over input
-                data, default = 1
-                
             batch_size (int): size of each generated batch of data, 
                 default = 64
                 
-            samples (pandas.Dataframe): two column pandas dataframe
-                with chromosome position information. Required column
-                names are column 1:'chrom', column 2:'pos'. Use this
-                parameter if you set batch_gen_params['sampling_mode']
-                to 'manual'. default = None
-
-        
         **Members**
         
         IGNORE_FOR_SPHINX_DOCS:
-            _stranded (boolean): True if input data is stranded
-            
-            _has_control (boolean): True if input data includes 
-                bias/control track
-            
-            _sampling_mode (str): the mode of sampling chromosome 
-                positions; one of  
-                ['peaks', 'sequential', 'random', 'manual'].
-            
             _mode (str): 'train', 'val' or 'test'
 
             _tasks (collections.OrderedDict): dictionary of input tasks
-                taken from input_data json
+                taken from tasks_json
             
-            _num_tasks (int): the number of tasks in 'tasks'
+            _num_tasks (int): the number of tasks in '_tasks'
             
+            _total_signal_tracks (int): the number of tracks across all 
+                tasks
+
+            _bias_tracks (dict): number of bias tracks for each task
+
             _reference (str): the path to the reference genome fasta
                 file
             
@@ -192,9 +155,6 @@ class MSequenceGenerator:
             
             _num_threads (int): number of parallel threads for batch
                 generation
-            
-            _epochs (int): number of iterations for looping over input
-                data
             
             _batch_size (int): size of each generated batch of data
                         
@@ -211,8 +171,7 @@ class MSequenceGenerator:
                 to specify how many negative samples will be added to
                 each batch. num_negative_samples = 
                 negative_sampling_rate * batch_size. Ignored if 
-                --sampling_mode is not 'peaks', and --mode is not 
-                'train'
+                --mode is not 'train'
             
             _rev_comp_aug (boolean): specify whether reverse complement
                 augmentation should be applied to each batch of data.
@@ -223,56 +182,45 @@ class MSequenceGenerator:
             
             _shuffle (boolean): if True input data will be shuffled at
                 the begininning of each epoch
-
-            _ready_for_next_epoch (boolean): flag to control batch 
-                generation for the next epoch. The consumer of the 
-                generator is required to send this signal using 
-                'set_ready_for_next_epoch'. This protocol is required
-                so that excessive and unnecessary batches are not 
-                generated if they will not be consumed 
-            
-            _stop (boolean): flag to indicate that batch generation 
-                should be terminated after the current epoch
                 
-            _samples (pandas.Dataframe): two column pandas dataframe with
-                chromosome positions that will be used for generating 
-                batches of data
+            _loci (pandas.DataFrame): pandas dataframe of aggregated 
+                loci across all tasks
+
+            _loci_size (int): size of the input loci dataframe
+            
+            _resized_loci (pandas.DataFrame): pandas dataframe of loci
+                after resizing for optimal batch generation
+                
+            _resized_loci_size (int): size of the resized loci dataframe
             
         IGNORE_FOR_SPHINX_DOCS
     """
 
-    def __init__(self, input_config, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms, num_threads=10, epochs=1, batch_size=64, 
-                 samples=None):
-        
-        #: True if data is stranded
-        self._stranded = input_config['stranded']
-        
-        #: True if data has controls
-        self._has_control = input_config['has_control']
+    def __init__(self, tasks_json, batch_gen_params, reference_genome, 
+                 chrom_sizes, chroms, num_threads=10, batch_size=64):
         
         #: ML task mode 'train', 'val' or 'test'
         self._mode = batch_gen_params['mode']
 
-        #: sampling mode to get chromosome positions
-        self._sampling_mode = batch_gen_params['sampling_mode']
-        
         # make sure the input_data json file exists
-        if not os.path.isfile(input_config['data']):
+        if not os.path.isfile(tasks_json):
             raise NoTracebackException(
-                "File not found: {} OR you may have accidentally "
-                "specified a directory path.".format(input_config['data']))
+                "File not found: {} ".format(tasks))
         
         # load the json file
-        with open(input_config['data'], 'r') as inp_json:
+        with open(tasks_json, 'r') as inp_json:
             try:
+                tasks = json.loads(inp_json.read())
+                # since the json has keys as strings, we convert the 
+                # top level keys to int so we can used them later for
+                # indexing
                 #: dictionary of tasks for training
-                self._tasks = json.loads(inp_json.read())
+                self._tasks = {int(k): v for k, v in tasks.items()}
             except json.decoder.JSONDecodeError:
                 raise NoTracebackException(
                     "Unable to load json file {}. Valid json expected. "
                     "Check the file for syntax errors.".format(
-                        input_config['data']))
+                        tasks_json))
 
         # check if the reference genome file exists
         if not os.path.isfile(reference_genome):
@@ -289,6 +237,17 @@ class MSequenceGenerator:
         #: the number of tasks in _tasks 
         self._num_tasks = len(list(self._tasks.keys()))
         
+        #: the number of tracks across all tasks
+        self._total_signal_tracks = 0
+        for i in range(self._num_tasks):
+            self._total_signal_tracks += \
+                len(self._tasks[i]['signal']['source'])
+        
+        #: the number of bias tracks for each task
+        self._bias_tracks = {}
+        for i in range(self._num_tasks):
+            self._bias_tracks[i] = len(self._tasks[i]['bias']['source'])
+
         #: path to the reference genome
         self._reference = reference_genome
 
@@ -311,9 +270,6 @@ class MSequenceGenerator:
         #: number of parallel threads for batch generation 
         self._num_threads = num_threads
         
-        #: number of iterations for looping over input data
-        self._epochs = epochs
-        
         #: size of each generated batch of data
         self._batch_size = batch_size
 
@@ -331,8 +287,8 @@ class MSequenceGenerator:
         
         #: Use a positive value > 0.0 to specify how many negative
         #: samples will be added to each batch. num_negative_samples = 
-        #: negative_sampling_rate * batch_size. Ignored if 
-        #: --sampling_mode is not 'peaks', and --mode is not 'train'
+        #: negative_sampling_rate * batch_size. Ignored if --mode is
+        # not 'train'
         self._negative_sampling_rate = \
             batch_gen_params['negative_sampling_rate']
         
@@ -346,106 +302,125 @@ class MSequenceGenerator:
         #: if True, shuffle the data before the beginning of the epoch
         self._shuffle = batch_gen_params['shuffle']
         
-        if self._sampling_mode == 'peaks':
-            # get a pandas dataframe for the peak positions
-            # Note - we need the 'tasks' dictionary so we can access
-            # the peaks.bed files from the paths available in the 
-            # dictionary
-            self._samples = sequtils.getPeakPositions(
-                self._tasks, self._chroms, 
-                self._chrom_sizes_df[['chrom', 'size']], self._input_flank, 
-                drop_duplicates=True)
-            
-        elif self._sampling_mode == 'sequential':
-            
-            if 'num_positions' not in batch_gen_params:
-                raise NoTracebackException(
-                    "Key not found in batch_gen_params_json: 'num_positions'. " 
-                    "Required for sequential sampling mode")
-
-            if 'step_size' not in batch_gen_params:
-                raise NoTracebackException(
-                    "Key not found in batch_gen_params_json: 'step_size'. " 
-                    "Required for sequential sampling mode")
-
-            # get a pandas dataframe with sequential positions at 
-            # regular intervals
-            self._samples = sequtils.getChromPositions(
-                self._chroms, self._chrom_sizes_df[['chrom', 'size']], 
-                self._input_flank, mode=self._sampling_mode, 
-                num_positions=batch_gen_params['num_positions'], 
-                step=batch_gen_params['step_size'])
-
-            # since the positions are fixed and equally spaced we 
-            # wont jitter
-            self._max_jitter = 0
-
-        elif self._sampling_mode == 'random':
-            
-            if 'num_positions' not in batch_gen_params:
-                raise NoTracebackException(
-                    "Key not found in batch_gen_params_json: 'num_positions'. "
-                    "Required for random sampling mode")
-            
-            # get a pandas dataframe with random positions
-            self._samples = sequtils.getChromPositions(
-                self._chroms, self._chrom_sizes_df[['chrom', 'size']], 
-                self._input_flank, mode=self._sampling_mode, 
-                num_positions=batch_gen_params['num_positions'])
-
-            # its already random, why jitter?!
-            self._max_jitter = 0
+        #: pandas dataframe of aggregated loci across all tasks
+        self._loci = sequtils.getPeakPositions(
+            self._tasks, self._chroms, 
+            self._chrom_sizes_df[['chrom', 'size']], self._input_flank, 
+            drop_duplicates=True)
+                        
+        #: size of the input loci dataframe
+        self._loci_size = len(self._loci)
         
-        elif self._sampling_mode == 'manual':
-            
-            # check if the samples parameter has been provided
-            if samples is None:
-                raise NoTracebackException(
-                    "If sampling_mode is 'manual', 'samples' parameter"
-                    "has to be set. Found None.")
-            
-            if not isinstance(samples, pandas.Dataframe) or \
-                    set(samples.columns.tolist()) != set(['chrom', 'pos']):
-                raise NoTracebackException(
-                    "samples' parameter should be a valid pandas.Dataframe"
-                    "with two columns 'chrom' and 'pos'")
-                
-            #: two column pandas dataframe with chromosome positions,
-            #: columns = ['chrom', 'pos']
-            self._samples = samples
-            
-        #: size of the input samples before padding
-        self._unpadded_samples_size = len(self._samples)
+        if self._mode == 'train' or self._mode == 'val':
+            # trim samples so we can balance load across all threads
+            # the resulting samples will be in self._resized_loci
+            # Note: In 'train' or 'val' mode we want to make sure to
+            # not to repeat samples to skew training or validation 
+            # loss, so trimming and not padding is the better option
+            self._trim_samples()
         
-        # pad self._samples dataframe with randomly selected rows 
-        # so that the length of the dataframe is an exact multiple of
-        # num_threads * batch_size. We do this so we can equally divide
-        # the batches across several batch generation threads 
-        exact_multiple = sequtils.round_to_multiple(
-            len(self._samples), num_threads * batch_size, smallest=True)
-        pad_size = exact_multiple - len(self._samples)
-        
-        if pad_size > 0:
-            # If the pad_size > #self._samples, then number of data
-            # samples for the set (train or val) is significantly less
-            # than num_threads * batch_size, so we'll have to sample 
-            # the padded rows with replacement
-            replace = False
-            if pad_size > len(self._samples):
-                replace = True
-                logging.info("mode '{}': Sampling with replacement for "
-                             "data padding")
+        elif self._mode == 'test':
+            # pad samples so we can balance load across all threads
+            # the resulting samples will be in self._resized_loci
+            # Note: In 'test' mode we want to make sure not to miss
+            # any samples, so we pad by repeating a few samples, but 
+            # we need to make sure to not count those samples for 
+            # the metrics computation
+            self._pad_samples()
             
-            self._samples = self._samples.append(
-                self._samples.sample(pad_size, replace=replace),
-                ignore_index=True)
+    def _trim_samples(self):
+        """
+            trim self._loci dataframe so that the length of the 
+            dataframe is an exact multiple of num_threads * batch_size.
+            We do this so we can equally divide the batches across 
+            several batch generation threads                 
+        """
+        
+        # largest multiple of num_threads * batch_size < sample_size
+        largest_multiple = sequtils.round_to_multiple(
+            self._loci_size, self._num_threads * self._batch_size, 
+            smallest=False)
 
-        #: size of the input samples after padding
-        self._samples_size = len(self._samples)
+        if largest_multiple == 0:
+            raise NoTracebackException(
+                "Your data does not have enough samples to generate batches "
+                "of size {} across {} threads. Either reduce 'threads' or "
+                "'batch_size'".format(self._batch_size, self._num_threads))
+
+        #: pandas dataframe of loci after resizing for optimal
+        #: batch generation
+        self._resized_loci = self._loci.sample(
+            largest_multiple, replace=False)
+
+        #: size of the loci dataframe after resizing
+        self._resized_loci_size = len(self._resized_loci)
         
-        logging.info("mode '{}': Data size (with {} padded rows) - {}".format(
-            self._mode, pad_size, len(self._samples)))
+        logging.info(
+            "mode '{}': Data size (after trimming {} samples) - {}".format(
+                self._mode, self._loci_size - largest_multiple, 
+                self._resized_loci_size))
+ 
+    def _pad_samples(self):
+        """
+            pad self._loci dataframe so that the length of the 
+            dataframe is an exact multiple of num_threads * batch_size.
+            We do this so we can equally divide the batches across 
+            several batch generation threads                 
+        """
         
+        # smallest multiple of num_threads * batch_size > loci_size
+        smallest_multiple = sequtils.round_to_multiple(
+            self._loci_size, self._num_threads * self._batch_size, 
+            smallest=True)
+
+        #: pandas dataframe of loci after resizing for optimal
+        #: batch generation
+        self._resized_loci = self._loci.sample(
+            largest_multiple, replace=True)
+
+        #: size of the loci dataframe after resizing
+        self._resized_loci_size = len(self._resized_loci)
+        
+        logging.info(
+            "mode '{}': Data size (after padding {} samples) - {}".format(
+                self._mode, smallest_multiple - self._loci_size, 
+                self._resized_loci_size))
+
+    def _get_num_bias_tracks_for_task(self, task):
+        """
+            Get total number of bias tracks for the task including
+            original and smoothed bias tracks
+
+            Args:
+                task_info (dict): task specific dictionary with 'signal',
+                    'loci', and 'bias' info
+
+            Returns:
+                int: total number of bias tracks for this task
+        """
+        # get number of original bias tracks for the task
+        num_bias_tracks = len(task['bias']['source'])
+
+        # if no bias tracks are found for this task
+        if num_bias_tracks == 0:
+            return 0
+
+        # the length of the 'bias_smoothing' list should be the same
+        # as the 'source' list
+        if len(task['bias']['smoothing']) != num_bias_tracks:
+            raise NoTracebackException(
+                "RuntimeError 'bias': Length mismatch 'source' vs 'smoothing'")
+
+        # count the number of 'smoothed' bias tracks that will be
+        # added on
+        for i in range(num_bias_tracks):
+            if task['bias']['smoothing'][i] is not None:
+                # add 1 for every smoothed track, not all bias tracks
+                # may have their corresponding smoothed versions
+                num_bias_tracks += 1
+
+        return num_bias_tracks
+
     def get_input_tasks(self):
         """
             The dictionary of tasks loaded from the json file
@@ -458,28 +433,29 @@ class MSequenceGenerator:
         
         return self._tasks
     
-    def get_unpadded_samples_len(self):
+    def get_samples_len(self):
         """
-            The number of data samples before padding
+            The number of data samples before resizing
             
             Returns:
                 
-                int: number of data samples before padding
+                int: number of data samples before resizing
         """
         
-        return self._unpadded_samples_size
+        return self._loci_size
     
-    def get_samples_len(self):
+    def get_resized_samples_len(self):
         """
             The number of data samples used in batch generation
-            (after padding)
+            (after resizing, either trimming for train/val and 
+            padding for test)
             
             Returns:
                 
                 int: number of data samples used in batch generation
         """
         
-        return self._samples_size
+        return self._resized_loci_size
     
     def len(self):
         """
@@ -489,7 +465,7 @@ class MSequenceGenerator:
                 int: number of batches of data generated in each epoch
         """
         
-        return self._samples.shape[0] // self._batch_size
+        return self._resized_loci_size // self._batch_size
    
     def _generate_batch(self, coords):
         """ 
@@ -497,18 +473,16 @@ class MSequenceGenerator:
             
         """
         
-        raise NotImplementedError("Method not implemented. Used a "
-                                  "derived class.")
+        raise NotImplementedError("Method not implemented.")
 
     def get_name(self):
         """ 
             Name of the sequence generator
             
         """
-        raise NotImplementedError("Method not implemented. Used a "
-                                  "derived class.")
+        raise NotImplementedError("Method not implemented.")
 
-    def _get_negative_batch(self):
+    def _get_random_negative_batch(self):
         """
             Get chrom positions for the negative samples using
             uniform random sampling from across the all chromosomes
@@ -534,10 +508,10 @@ class MSequenceGenerator:
         # Step 3. multiply the random numbers with the size column.
         # Additionally, factor in the flank size and jitter while 
         # computing the position
-        chrom_df['pos'] = ((chrom_df['size'] - ((self._input_flank
-                                                 + self._max_jitter) * 2))
-                           * r + self._input_flank
-                           + self._max_jitter).astype(int)
+        chrom_df['pos'] = (
+            (chrom_df['size'] 
+             - ((self._input_flank + self._max_jitter) * 2)) * r 
+            + self._input_flank + self._max_jitter).astype(int)
 
         return chrom_df[['chrom', 'pos']]
 
@@ -568,15 +542,22 @@ class MSequenceGenerator:
                 
             batch_df = coords_df.iloc[i:i + self._batch_size]
             batch_df = batch_df.copy()
+            # positive sample
             batch_df['status'] = 1
+            # index into the original loci .bed file
+            batch_df['idx'] = batch_df.index.values
             
-            # add equal number of negative samples
-            if self._mode == "train" and \
-                self._sampling_mode == 'peaks' and \
-                    self._negative_sampling_rate > 0.0:
+            # add negative samples
+            if self._mode == "train" and self._negative_sampling_rate > 0.0:
                     
-                neg_batch = self._get_negative_batch()
+                neg_batch = self._get_random_negative_batch()
+                
+                # negative sample
                 neg_batch['status'] = -1
+                
+                # since these samples are not in the original loci
+                neg_batch['idx'] = -1
+                
                 batch_df = pd.concat([batch_df, neg_batch])
             
             # generate a batch of one hot encoded sequences and 
@@ -588,8 +569,9 @@ class MSequenceGenerator:
     
             cnt += 1
         
-        logging.debug("{} process {} put {} batches into mpq".format(
-            self._mode, proc_idx, cnt))
+        logging.debug(
+            "{} process {} put {} batches into mpq".format(
+                self._mode, proc_idx, cnt))
             
     def _stealer(self, mpq, q, num_batches, thread_id):
         """
@@ -611,8 +593,9 @@ class MSequenceGenerator:
         for i in range(num_batches):            
             q.put(mpq.get())
 
-        logging.debug("{} stealer thread {} got {} batches from mpq".format(
-            self._mode, thread_id, num_batches))
+        logging.debug(
+            "{} stealer thread {} got {} batches from mpq".format(
+                self._mode, thread_id, num_batches))
 
     def _epoch_run(self, data):
         """
@@ -642,9 +625,9 @@ class MSequenceGenerator:
         warning_dispatched = False
         
         # number of data samples to assign to each processor
-        # (since we have already padded data len(data) is directly
+        # (since we have already resized loci, len(data) is directly
         # divisible by num_threads)
-        samples_per_processor = int(len(data) / self._num_threads)
+        samples_per_process = int(len(data) / self._num_threads)
 
         # batches that will be generated by each process thread
         num_batches = []
@@ -655,19 +638,17 @@ class MSequenceGenerator:
             mpq = mp.Queue()
 
             # give each process a slice of the dataframe of positives
-            df = data[i * samples_per_processor: 
-                      (i + 1) * samples_per_processor][['chrom', 'pos']]
-
-            # the last process gets the leftover data points
-            if i == (self._num_threads - 1):
-                df = pd.concat([df, data[(i + 1) * samples_per_processor:]])
+            df = data[
+                i * samples_per_process: 
+                (i + 1) * samples_per_process][['chrom', 'pos']]
                 
             num_batches.append(len(df) // self._batch_size)
             
             if df.shape[0] != 0:
-                logging.debug("{} spawning process {}, df size {}, "
-                              "sum(num_batches) {}".format(
-                                  self._mode, i, df.shape, sum(num_batches)))
+                logging.debug(
+                    "{} spawning process {}, df size {} "
+                    "sum(num_batches) {}".format(
+                        self._mode, i, df.shape, sum(num_batches)))
 
                 # spawn and start the batch generation process 
                 p = mp.Process(target=self._proc_target, args=[df, mpq, i])
@@ -677,23 +658,23 @@ class MSequenceGenerator:
                 
             else:
                 if not warning_dispatched:
-                    logging.warn("One or more process threads are not being "
-                                 "assigned data for parallel batch "
-                                 "generation. You should reduce the number "
-                                 "of threads using the --threads option "
-                                 "for better performance. Inspect logs for "
-                                 "batch assignments.")
+                    logging.warn(
+                        "One or more process threads are not being assigned "
+                        "data for parallel batch generation. You should "
+                        "reduce the number of threads using the --threads "
+                        "option for better performance. Inspect logs for "
+                        "batch assignments.")
                     warning_dispatched = True
                 
-                logging.debug("{} skipping process {}, df size {}, "
-                              "num_batches {}".format(
-                                  self._mode, i, df.shape, sum(num_batches)))
+                logging.debug(
+                    "{} skipping process {}, df size {}, num_batches "
+                    "{}".format(self._mode, i, df.shape, sum(num_batches)))
                 
                 procs.append(None)
                 mp_queues.append(None)
 
-        logging.debug("{} num_batches list {}".format(self._mode, 
-                                                      num_batches))
+        logging.debug(
+            "{} num_batches list {}".format(self._mode, num_batches))
                 
         # the threads that will "get" from mp queues 
         # and put into the regular queue
@@ -704,44 +685,41 @@ class MSequenceGenerator:
             # the i-th  process
             if num_batches[i] > 0:
                 
-                logging.debug("{} starting stealer thread {} [{}] ".format(
-                    self._mode, i, num_batches[i]))
+                logging.debug(
+                    "{} starting stealer thread {} [{}] ".format(
+                        self._mode, i, num_batches[i]))
                 
                 mp_q = mp_queues[i]
-                stealerThread = Thread(target=self._stealer, 
-                                       args=[mp_q, q, num_batches[i], i])
+                
+                stealerThread = Thread(
+                    target=self._stealer, args=[mp_q, q, num_batches[i], i])
                 stealerThread.start()
                 threads.append(stealerThread)
             else:
                 threads.append(None)
                 
-                logging.debug("{} skipping stealer thread {} ".format(
-                    self._mode, i, num_batches))
+                logging.debug(
+                    "{} skipping stealer thread {} ".format(
+                        self._mode, i, num_batches))
 
         return procs, threads, q, sum(num_batches)
 
-    def gen(self, epoch):
+    def gen(self):
         """
-            Generator function to yield one batch of data
-            
-            Args:
-                epoch (int): the epoch number
+            Generator function to yield one epoch of data
 
         """
         
         if self._shuffle:
             # shuffle at the beginning of each epoch
-            data = self._samples.sample(frac=1.0)
+            data = self._resized_loci.sample(frac=1.0)
             logging.debug("{} Shuffling complete".format(self._mode))
         else:
-            data = self._samples
+            data = self._resized_loci
 
         # spawn multiple processes to generate batches of data in
         # parallel for each epoch
         procs, threads, q, total_batches = self._epoch_run(data)
-
-        logging.debug("{} Batch generation for epoch {} started".format(
-            self._mode, epoch))
 
         # yield the correct number of batches for each epoch
         for j in range(total_batches):      
@@ -752,20 +730,20 @@ class MSequenceGenerator:
         # required number of batches have been yielded
         for j in range(self._num_threads):
             if procs[j] is not None:
-                logging.debug("{} waiting to join process {}".format(
-                    self._mode, j))
+                logging.debug(
+                    "{} waiting to join process {}".format(self._mode, j))
                 procs[j].join()
 
             if threads[j] is not None:
-                logging.debug("{} waiting to join thread {}".format(
-                    self._mode, j))
+                logging.debug(
+                    "{} waiting to join thread {}".format(self._mode, j))
                 threads[j].join()
 
-            logging.debug("{} join complete for process {}".format(
-                self._mode, j))
+            logging.debug(
+                "{} join complete for process {}".format(self._mode, j))
 
-        logging.debug("{} Finished join for epoch {}".format(
-            self._mode, epoch))
+        logging.debug(
+            "{} Finished join for epoch".format(self._mode))
 
         logging.debug("{} Ready for next epoch".format(self._mode))
 
@@ -777,19 +755,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         geonmics assays
     
         Args:
-            input_config (dict): python dictionary with information 
-                about the input data. Contains the following keys -
-
-                *data (str)*
-                    path to the json file containing task information. 
-                    See README for more information on the format of  
-                    the json file
-                
-                *stranded (boolean)*
-                    True if data is stranded
-            
-                *has_control (boolean)*
-                    True if control data has been included 
+            tasks_json (str): path to the json file containing task
+                information, required keys - 'signal', 'loci', 'bias'
                 
             batch_gen_params (dictionary): python dictionary with batch
                 generation parameters. Contains the following keys - 
@@ -816,9 +783,10 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     ['peaks', 'sequential', 'random', 'manual']. In 
                     'peaks' mode the data samples are fetched from the
                     peaks bed file specified in the json file 
-                    input_config['data']. In 'manual' mode, the bed
-                    file containing the chromosome position information
-                    is passed to the 'samples' argument of the class
+                    input_config['data']. In 'manual' mode, the two 
+                    column pandas dataframe containing the chromosome  
+                    position information is passed to the 'samples' 
+                    argument of the class
                 
                 *shuffle (boolean)*
                     specify whether input data is shuffled at the 
@@ -827,18 +795,6 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 *mode (str)*
                     'train', 'val' or 'test'
                  
-                *num_positions" (int)*
-                    specify how many chromosome positions to sample if 
-                    sampling_mode is 'sequential' or 'random'. Can be 
-                    omitted if sampling_mode is "peaks", has no effect if
-                    present.
-                 
-                *step_size (int)*
-                    specify step size for sampling chromosome positions if 
-                    sampling_mode is "sequential". Can be omitted if 
-                    sampling_mode is "peaks" or "random", has no effect if
-                    present.
-
             reference_genome (str): the path to the reference genome 
                 fasta file
                 
@@ -848,78 +804,47 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 for batch generation
                 
             num_threads (int): number of parallel threads for batch
-                generation
+                generation, default = 10
                 
-            epochs (int): number of iterations for looping over input
-                data
-                
-            batch_size (int): size of each generated batch of data
-
-            samples (pandas.Dataframe): two column pandas dataframe
-                with chromosome position information. Required column
-                names are column 1:'chrom', column 2:'pos'. Use this
-                parameter if you set batch_gen_params['sampling_mode']
-                to 'manual'. default = None
-
-            kwargs (dictionary): python dictionary containing
-                parameters specific to BPNet. Contains the following
-                keys - 
-                
-                *name (str)*
-                    model architecture name
-                
-                *filters (int)*
-                    number of filters for BPNet
-                
-                *control_smoothing (list)*
-                    nested list of gaussiam smoothing parameters. Each 
-                    inner list has two values - [sigma, window_size] for 
-                    supplemental control tracks
-        **Members**
-        
-        IGNORE_FOR_SPHINX_DOCS:
-        Attributes:
-            _control_smoothing (list): nested list of gaussiam smoothing
-                parameters. Each inner list has two values - 
-                [sigma, window_size] for supplemental control tracks
-        IGNORE_FOR_SPHINX_DOCS
-        
+            batch_size (int): size of each generated batch of data, 
+                default = 64
+                        
     """
 
-    def __init__(self, input_config, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms, num_threads=10, epochs=100, 
-                 batch_size=64, samples=None, **kwargs):
+    def __init__(self, tasks_json, batch_gen_params, reference_genome, 
+                 chrom_sizes, chroms, num_threads=10, batch_size=64):
         
         # name of the generator class
         self.name = "BPNet"
         
         # call base class constructor
-        super().__init__(input_config, batch_gen_params, reference_genome, 
-                         chrom_sizes, chroms, num_threads, epochs, batch_size, 
-                         samples)
+        super().__init__(tasks_json, batch_gen_params, reference_genome, 
+                         chrom_sizes, chroms, num_threads, batch_size)
         
-        if 'control_smoothing' not in kwargs:
-            raise NoTracebackException(
-                "Key not Found: missing 'control_smoothing' parameter")
+    def get_name(self):
+        """ 
+            Name of the sequence generator
             
-        #: nested list of gaussiam smoothing parameters. Each inner list
-        #: has two values - [sigma, window_size] for supplemental
-        #: control control tracks
-        self._control_smoothing = kwargs['control_smoothing']
+            Returns:
+                str: name of the sequence generator
+
+        """
+        return self.name
 
     def _generate_batch(self, coords):
-        """Generate one batch of inputs and outputs for training BPNet
+        """
+            Generate one batch of inputs and outputs for training BPNet
             
             For all coordinates in "coords" fetch sequences &
             one hot encode the sequences. Fetch corresponding
-            signal values (for e.g. from a bigwig file). 
+            signal and bias values (from bigwig files). 
             Package the one hot encoded sequences and the output
             values as a tuple.
             
             Args:
                 coords (pandas.DataFrame): dataframe with 'chrom', 
                     'pos' & 'status' columns specifying the chromosome,
-                    thecoordinate and whether the loci is a positive(1)
+                    the coordinate and whether the loci is a positive(1)
                     or negative sample(-1)
                 
             Returns:
@@ -930,66 +855,81 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     cordinates & the inputs
         """
         
-        # reference file to fetch sequences
-        fasta_ref = pyfaidx.Fasta(self._reference)
-
-        # Initialization
-        # (batch_size, output_len, 1 + #smoothing_window_sizes)
-        control_profile = np.zeros((coords.shape[0], self._output_flank * 2, 
-                                    1 + len(self._control_smoothing)), 
-                                   dtype=np.float32)
+        # create a new reverse complement column in the dataframe
+        # and set it to 0 for all loci (0-not reverse complemented, 
+        # 1-reverse complemented)
+        coords['rev_comp'] = 0
         
-        # (batch_size)
-        control_profile_counts = np.zeros((coords.shape[0]), 
-                                          dtype=np.float32)
-
-        # in 'test' mode we pass the true profile as part of the 
-        # returned tuple from the batch generator
-        if self._mode == "train" or self._mode == "val" or \
-                self._mode == "test":
-            # (batch_size, output_len, #tasks)
-            profile = np.zeros((coords.shape[0], self._output_flank * 2, 
-                                self._num_tasks), dtype=np.float32)
-
-            # (batch_size, #tasks)
-            profile_counts = np.zeros((coords.shape[0], self._num_tasks),
-                                      dtype=np.float32)
+        # if reverse complement is enabled double the 'coords'
+        if self._rev_comp_aug:
+            # make a copy of coords, but set the rev_comp flag to 1
+            coords_copy = coords.copy()
+            coords_copy['rev_comp'] = 1
+            coords = pd.concat([coords, coords_copy])
         
-        # if reverse complement augmentation is enabled then double the sizes
-        if self._mode == "train" and self._rev_comp_aug:
-            control_profile = control_profile.repeat(2, axis=0)
-            control_profile_counts = control_profile_counts.repeat(2, axis=0)
-            profile = profile.repeat(2, axis=0)
-            profile_counts = profile_counts.repeat(2, axis=0)
+        # Initialize arrays to hold expected profile predictions,
+        # counts predictions and profile bias and counts bias inputs
+        
+        # profile predictions across all tasks 
+        profile_predictions = np.zeros(
+            (coords.shape[0], self._output_flank * 2, 
+             self._total_signal_tracks), dtype=np.float32)
+        
+        # counts predictions across all tasks 
+        logcounts_predictions = np.zeros(
+            (coords.shape[0], self._total_signal_tracks), dtype=np.float32)
+
+        # profile and counts bias inputs for each task separately
+        profile_bias_input = {}
+        counts_bias_input = {}
+        for i in range(self._num_tasks):
+            # the number of bias tracks for the ith tasks, which
+            # includes smoothed versions
+            num_bias_tracks = self._get_num_bias_tracks_for_task(
+                self._tasks[i])
+
+            if num_bias_tracks > 0:
+                # profile bias input for the ith task
+                profile_bias_input[i] = np.zeros(
+                    (coords.shape[0], self._output_flank * 2, num_bias_tracks), 
+                    dtype=np.float32)
+
+                # counts bias input for the ith task
+                counts_bias_input[i] = np.zeros(
+                    (coords.shape[0], num_bias_tracks), dtype=np.float32)
  
+        # Initialization done.
+
         # list of sequences in the batch, these will be one hot
         # encoded together as a single sequence after iterating
         # over the batch
         sequences = []  
         
-        # list of chromosome start/end coordinates 
-        # useful for tracking test batches
+        # list of chromosome start/end coordinates for the batch
         coordinates = []
+
+        # list of jitter values for the batch coordinates
+        jitters = []
         
-        # open all the control bigwig files and store the file 
-        # objects in a dictionary
-        control_files = {}
+        # list of index values for the batch coordinates
+        idxs = coords['idx'].values
+        
+        # open all the signal and bias bigwig files and store the  
+        # file objects in a dictionary
+        signal_files = {}
+        bias_files = {}
         for task in self._tasks:
-            # the control is not necessary 
-            if 'control' in self._tasks[task]:
-                control_files[task] = pyBigWig.open(
-                    self._tasks[task]['control'])
+            signal_files[task] = []
+            for signal_file in self._tasks[task]['signal']['source']:
+                signal_files[task].append(pyBigWig.open(signal_file))
+
+            bias_files[task] = []
+            for bias_file in self._tasks[task]['bias']['source']:
+                bias_files[task].append(pyBigWig.open(bias_file))
         
-        # in 'test' mode we pass the true profile as part of the 
-        # returned tuple from the batch generator
-        if self._mode == "train" or self._mode == "val" or \
-                self._mode == "test":
-            # open all the required bigwig files and store the file 
-            # objects in a dictionary
-            signal_files = {}
-            for task in self._tasks:
-                signal_files[task] = pyBigWig.open(self._tasks[task]['signal'])
-            
+        # reference file to fetch sequences
+        fasta_ref = pyfaidx.Fasta(self._reference)
+                                          
         # iterate over the batch
         rowCnt = 0
         for _, row in coords.iterrows():
@@ -999,7 +939,10 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             if self._mode == "train" and self._max_jitter:
                 jitter = random.randint(-self._max_jitter, self._max_jitter)
             
-            # Step 1 get the sequence 
+            # record the jitter for this sample
+            jitters.append(jitter)
+                                          
+            # Step 1. get the sequence 
             chrom = row['chrom']
             # we use self._input_flank here and not self._output_flank because
             # input_seq_len is different from output_len
@@ -1013,126 +956,115 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             start = row['pos'] - self._output_flank + jitter
             end = row['pos'] + self._output_flank + jitter
             
-            # collect all the start/end coordinates into a list
-            # we'll send this off along with 'test' batches
+            # record the start/end coordinates for this sample
             coordinates.append((chrom, start, end))
+                                    
+            # track profile tracks across all tasks
+            profile_track_idx = 0
 
-            # iterate over each task
-            for task in self._tasks:
-                # identifies the +/- strand pair
-                task_id = self._tasks[task]['task_id']
-                
-                # the strand id: 0-positive, 1-negative
-                # easy to index with those values
-                strand = self._tasks[task]['strand']
-                
-                # Step 2. get the control values
-                if task in control_files:
-                    control_values = control_files[task].values(
-                        chrom, start, end)
-
-                    # replace nans with zeros
-                    if np.any(np.isnan(control_values)): 
-                        control_values = np.nan_to_num(control_values)
-
-                    # update row in batch with the control values
-                    # the values are summed across all tasks
-                    # the axis = 1 dimension accumulates the sum
-                    # there are 'n' copies of the sum along axis = 2, 
-                    # n = #smoothing_windows
-                    control_profile[rowCnt, :, :] += np.expand_dims(
-                        control_values, axis=1)
-                
-                # in 'test' mode we pass the true profile as part of the 
-                # returned tuple from the batch generator
-                if self._mode == "train" or self._mode == "val" or \
-                        self._mode == "test":
-                    # Step 3. get the signal values
-                    # fetch values using the pyBigWig file objects
-                    values = signal_files[task].values(chrom, start, end)
-                
-                    # replace nans with zeros
-                    if np.any(np.isnan(values)): 
-                        values = np.nan_to_num(values)
-
-                    # update row in batch with the signal values
-                    if self._stranded:
-                        profile[rowCnt, :, task_id * 2 + strand] = values
-                    else:
-                        profile[rowCnt, :, task_id] = values
+            # iterate over each task and read the signal and bias
+            # values from the bigWig files
+            for i in range(self._num_tasks):
+                                          
+                # Step 2. get the profile signal value
+                for signal_file in signal_files[i]:
+                    profile_predictions[rowCnt, :, profile_track_idx] = \
+                        np.nan_to_num(signal_file.values(chrom, start, end))  
+                        
+                    profile_track_idx += 1
+                                          
+                # Step 3. get the bias values
+                bias_track_idx = 0
+                for j in range(len(bias_files[i])):
+                    bias_file = bias_files[i][j]
+                    profile_bias_input[i][rowCnt, :, bias_track_idx] = \
+                        np.nan_to_num(bias_file.values(chrom, start, end))
+                                          
+                    bias_track_idx += 1
+                                
+                    # add the smoothed track if 'smoothing' has been
+                    # specified
+                    if self._tasks[i]['bias']['smoothing'][j] is not None:
+                        # get the smoothing params
+                        sigma = self._tasks[i]['bias']['smoothing'][j][0]
+                        window_size = \
+                            self._tasks[i]['bias']['smoothing'][j][1]
+                        
+                        # the smoothed bias track will immediately 
+                        # follow the original bias track in the last
+                        # dimension
+                        profile_bias_input[i][rowCnt, :, bias_track_idx] = \
+                            utils.gaussian1D_smoothing(
+                                profile_bias_input[i][
+                                    rowCnt, :, bias_track_idx - 1],
+                                sigma, window_size)
+                                          
+                        bias_track_idx += 1
 
             rowCnt += 1
-        
-        # Step 4. reverse complement augmentation
-        if self._mode == "train" and self._rev_comp_aug:
-            # Step 4.1 get list of reverse complement sequences
-            rev_comp_sequences = \
-                sequtils.reverse_complement_of_sequences(sequences)
-            
-            # append the rev comp sequences to the original list
-            sequences.extend(rev_comp_sequences)
-            
-            # Step 4.2 reverse complement of the control profile
-            control_profile[rowCnt:, :, :] = \
-                sequtils.reverse_complement_of_profiles(
-                    control_profile[:rowCnt, :, :], self._stranded)
-            
-            # Step 4.3 reverse complement of the signal profile
-            profile[rowCnt:, :, :] = \
-                sequtils.reverse_complement_of_profiles(
-                    profile[:rowCnt, :, :], self._stranded)
 
-        # Step 5. one hot encode all the sequences in the batch 
-        if len(sequences) == profile.shape[0]:
+        # Step 4. one hot encode all the sequences in the batch 
+        if len(sequences) == profile_predictions.shape[0]:
             X = sequtils.one_hot_encode(sequences, self._input_flank * 2)
         else:
             raise NoTracebackException(
                 "Unable to generate enough sequences for the batch")
-                
-        # we can perform smoothing on the entire batch of control values
-        for i in range(len(self._control_smoothing)):
 
-            sigma = self._control_smoothing[i][0]
-            window_size = self._control_smoothing[i][1]
+        # we can now compute the log(sum) of the profiles and bias
+        # profiles for the entire batch
+        logcounts_predictions = np.log(
+            np.sum(profile_predictions, axis=1) + 1)
 
-            # its i+1 because at index 0 we have the original 
-            # control  
-            control_profile[:, :, i + 1] = utils.gaussian1D_smoothing(
-                control_profile[:, :, i + 1], sigma, window_size)
-
-        # log of sum of control profile without smoothing (idx = 0)
-        control_profile_counts = np.log(
-            np.sum(control_profile[:, :, 0], axis=-1) + 1)
+        for key in profile_bias_input:
+            counts_bias_input[key] = np.log(
+                np.sum(profile_bias_input[key], axis=1) + 1)
         
-        # in 'train' and 'val' mode we need input and output 
-        # dictionaries
-        if self._mode == "train" or self._mode == 'val':
-            # we can now sum the profiles for the entire batch
-            profile_counts = np.log(np.sum(profile, axis=1) + 1)
-    
-            # return a tuple of input and output dictionaries
-            # 'coordinates' and 'status are not inputs to the model,
-            # so you will see a warning about unused inputs while
-            # training. It's safe to ignore the warning
-            # We pass 'coordinates' so we can track the exact
-            # coordinates of the inputs (because jitter is random)
-            # 'status' refers to whether the data sample is a +ve (1)
-            # or -ve (-1) example and is used by the attribution
-            # prior loss function
-            return ({'coordinates': coordinates,
-                     'status': coords['status'].values,
-                     'sequence': X, 
-                     'control_profile': control_profile, 
-                     'control_logcount': control_profile_counts},
-                    {'profile_predictions': profile, 
-                     'logcount_predictions': profile_counts})
+        # inputs to train, val & test
+        # 'coordinates', 'jitters', 'index', 'status' & 'rev_comp'
+        # are not inputs to the model, so you will see a warning 
+        # about unused inputs while training. It's safe to ignore
+        # the warning. We pass 'coordinates' so we can track the exact
+        # coordinates of the inputs (because jitter is random)
+        # 'status' refers to whether the data sample is a +ve (1)
+        # or -ve (-1) example and is used by the attribution
+        # prior loss function        
+        inputs = {
+            'sequence': X, 
+            'coordinates': np.array(coordinates)}
 
-        # in 'test' mode return a tuple of cordinates, true profiles
-        # & the input dictionary
-        return (coordinates, profile,
-                {'sequence': X, 
-                 'control_profile': control_profile,
-                 'control_logcount': control_profile_counts})
+        # add profile bias input
+        for key in profile_bias_input:
+            _key = 'profile_bias_input_' + str(key)
+            inputs[_key] = profile_bias_input[key]
+
+        # add counts bias input
+        for key in counts_bias_input:
+            _key = 'counts_bias_input_' + str(key)
+            inputs[_key] = counts_bias_input[key]
+                                          
+        # in 'train' mode we add some extras to track all the
+        # loci used in every batch of training
+        if self._mode == 'train':
+            inputs['jitters'] = np.array(jitters),
+            inputs['index'] = np.array(idxs),
+            inputs['status'] = coords['status'].values,
+            inputs['rev_comp'] = coords['rev_comp'].values
+        
+        # in 'train' and 'val' mode we need outputs as well     
+        if self._mode == 'train' or self._mode == 'val':
+            outputs = {
+                'profile_predictions': profile_predictions,
+                'logcounts_predictions': logcounts_predictions}
+
+            return (inputs, outputs)
+
+        # in 'test' mode we only return inputs
+        elif self._mode == 'test':
+            # we add the true profiles & counts so we can use those to
+            # compute metrics
+            inputs['true_profile'] = profile_predictions
+            inputs['true_logcounts'] = logcounts_predictions
+            return inputs
 
 
 def list_generator_names():
