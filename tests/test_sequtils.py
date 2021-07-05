@@ -91,24 +91,27 @@ def test_getPeakPositions():
               'chrX', 'chrY']
     
     tasks = {
-        "task0_plus": {
-            "strand": 0, 
-            "task_id": 0, 
-            "signal": "tests/test_data/single_task/"
-                      "stranded_with_controls/task0/plus.bw", 
-            "control": "tests/test_data/single_task/"
-                       "stranded_with_controls/task0/control_plus.bw", 
-            "peaks": "tests/test_data/single_task/"
-                     "stranded_with_controls/task0/peaks.bed"},
-        "task0_minus": {
-            "strand": 1, 
-            "task_id": 0, 
-            "signal": "tests/test_data/single_task/"
-                      "stranded_with_controls/task0/minus.bw", 
-            "control": "tests/test_data/single_task/"
-                       "stranded_with_controls/task0/control_minus.bw",
-            "peaks": "tests/test_data/single_task/"
-                     "stranded_with_controls/task0/peaks.bed"} 
+        0: {
+            'signal': {
+                'source': ["tests/test_data/single_task/"
+                           "stranded_with_controls/task0/plus.bw", 
+                           "tests/test_data/single_task/"
+                           "stranded_with_controls/task0/minus.bw"]
+            },
+            'loci': {
+                'source': ["tests/test_data/single_task/"
+                           "stranded_with_controls/task0/peaks.bed", 
+                           "tests/test_data/single_task/"
+                           "stranded_with_controls/task0/peaks.bed"]
+            },
+            'bias': {
+                'source': ["tests/test_data/single_task/"
+                           "stranded_with_controls/task0/control_plus.bw", 
+                           "tests/test_data/single_task/"
+                           "stranded_with_controls/task0/control_minus.bw"],
+                'smoothing': [None]
+            }            
+        }
     }
 
     # read the chrom sizes into a dataframe and filter rows from
