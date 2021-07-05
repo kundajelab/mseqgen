@@ -205,7 +205,7 @@ class MSequenceGenerator:
         # make sure the input_data json file exists
         if not os.path.isfile(tasks_json):
             raise NoTracebackException(
-                "File not found: {} ".format(tasks))
+                "File not found: {} ".format(tasks_json))
         
         # load the json file
         with open(tasks_json, 'r') as inp_json:
