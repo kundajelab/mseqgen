@@ -1062,7 +1062,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         elif self._mode == 'test':
             # we add the true profiles & counts so we can use those to
             # compute metrics
-            inputs['true_profile'] = profile_predictions
+            inputs['true_profiles'] = profile_predictions
             inputs['true_logcounts'] = logcounts_predictions
             return inputs
 
