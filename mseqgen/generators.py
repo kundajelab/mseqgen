@@ -637,10 +637,11 @@ class MSequenceGenerator:
         for i in range(self._num_threads):
             mpq = mp.Queue()
 
-            # give each process a slice of the dataframe of positives
+            # give each process a  copy of the slice of the dataframe 
+            # of positives
             df = data[
                 i * samples_per_process: 
-                (i + 1) * samples_per_process][['chrom', 'pos']]
+                (i + 1) * samples_per_process][['chrom', 'pos']].copy()
                 
             num_batches.append(len(df) // self._batch_size)
             
