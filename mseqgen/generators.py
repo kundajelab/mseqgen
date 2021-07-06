@@ -376,7 +376,7 @@ class MSequenceGenerator:
         #: pandas dataframe of loci after resizing for optimal
         #: batch generation
         self._resized_loci = self._loci.sample(
-            largest_multiple, replace=True)
+            smallest_multiple, replace=True)
 
         #: size of the loci dataframe after resizing
         self._resized_loci_size = len(self._resized_loci)
