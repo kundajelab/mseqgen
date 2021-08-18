@@ -1133,7 +1133,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                     profile[:rowCnt, :, :], self._stranded)
 
         # Step 5. one hot encode all the sequences in the batch 
-        X = sequtils.one_hot_encode(sequences)
+        X = sequtils.one_hot_encode(sequences, self._input_flank * 2)
 
         # if the input sequences are of unequal length then None
         # is returned
