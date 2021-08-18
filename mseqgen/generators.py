@@ -375,8 +375,9 @@ class MSequenceGenerator:
 
         #: pandas dataframe of loci after resizing for optimal
         #: batch generation
-        self._resized_loci = self._loci.sample(
-            smallest_multiple, replace=True)
+        self._resized_loci = pd.concat(
+            [self._loci, self._loci.sample(
+                smallest_multiple - self._loci_size, replace=True)])
 
         #: size of the loci dataframe after resizing
         self._resized_loci_size = len(self._resized_loci)
@@ -717,6 +718,8 @@ class MSequenceGenerator:
             logging.debug("{} Shuffling complete".format(self._mode))
         else:
             data = self._resized_loci
+
+        print("Unique data size before batch generator (after shuffling) - ", len(data.value_counts()))
 
         # spawn multiple processes to generate batches of data in
         # parallel for each epoch
