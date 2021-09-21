@@ -543,12 +543,18 @@ class MSequenceGenerator:
                 
             batch_df = coords_df.iloc[i:i + self._batch_size]
             batch_df = batch_df.copy()
-            # positive sample
+            
+            # positive samples
             batch_df['status'] = 1
+            
+            # there are implicit negative samples (possibly gc matched)
+            # whose weights are zero, we set the status of those to -1
+            batch_df.loc[batch_df['weight'] == 0, 'status'] = -1
+            
             # index into the original loci .bed file
             batch_df['idx'] = batch_df.index.values
             
-            # add negative samples
+            # add random negative samples
             if self._mode == "train" and self._negative_sampling_rate > 0.0:
                     
                 neg_batch = self._get_random_negative_batch()
@@ -642,7 +648,8 @@ class MSequenceGenerator:
             # of positives
             df = data[
                 i * samples_per_process: 
-                (i + 1) * samples_per_process][['chrom', 'pos']].copy()
+                (i + 1) * samples_per_process][['chrom', 'pos',
+                                                'weight']].copy()
                 
             num_batches.append(len(df) // self._batch_size)
             
@@ -847,9 +854,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             
             Args:
                 coords (pandas.DataFrame): dataframe with 'chrom', 
-                    'pos' & 'status' columns specifying the chromosome,
-                    the coordinate and whether the loci is a positive(1)
-                    or negative sample(-1)
+                    'pos', 'weight' & 'status' columns specifying the 
+                    chromosome, the coordinate and whether the loci is
+                    a positive(1) or negative sample(-1)
                 
             Returns:
                 tuple: 
@@ -918,6 +925,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         # list of index values for the batch coordinates
         idxs = coords['idx'].values
         
+        # sample weights
+        weights = coords['weight'].values
+
         # open all the signal and bias bigwig files and store the  
         # file objects in a dictionary
         signal_files = {}
@@ -1060,7 +1070,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
                 'profile_predictions': profile_predictions,
                 'logcounts_predictions': logcounts_predictions}
 
-            return (inputs, outputs)
+            return (inputs, outputs, weights)
 
         # in 'test' mode we only return inputs
         elif self._mode == 'test':

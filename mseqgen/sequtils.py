@@ -193,7 +193,7 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
             
             peaks_df = pd.read_csv(
                 peaks_file, sep='\t', header=None, 
-                names=['chrom', 'st', 'end', 'name', 'score', 'strand', 
+                names=['chrom', 'st', 'end', 'name', 'weight', 'strand', 
                        'signal', 'p', 'q', 'summit'])
 
             # keep only those rows corresponding to the required 
@@ -228,7 +228,7 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False):
                 ['chrom', 'flank_right']).reset_index(drop=True)
 
             # append to all peaks data frame
-            allPeaks = allPeaks.append(peaks_df[['chrom', 'pos']])
+            allPeaks = allPeaks.append(peaks_df[['chrom', 'pos', 'weight']])
 
             allPeaks = allPeaks.reset_index(drop=True)
     
