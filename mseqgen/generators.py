@@ -50,6 +50,10 @@
 
 """
 
+# set random seed
+import random
+random.seed(1234)
+
 import json
 import logging
 import multiprocessing as mp
@@ -58,7 +62,6 @@ import os
 import pandas as pd 
 import pyBigWig
 import pyfaidx
-import random
 import re
 
 from mseqgen import sequtils
