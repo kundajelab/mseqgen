@@ -436,6 +436,30 @@ class MSequenceGenerator:
         """
         
         return self._tasks
+
+    def get_samples(self):
+        """
+            The data samples before resizing
+            
+            Returns:
+                
+                pandas.Dataframe: dataframe of samples before resizing
+        """
+        
+        return self._loci
+    
+    def get_resized_samples(self):
+        """
+            The data samples used in batch generation
+            (after resizing, either trimming for train/val and 
+            padding for test)
+            
+            Returns:
+                
+                pandas.Dataframe: dataframe of samples after resizing
+        """
+        
+        return self._resized_loci
     
     def get_samples_len(self):
         """
