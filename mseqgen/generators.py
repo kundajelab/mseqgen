@@ -339,11 +339,41 @@ class MSequenceGenerator:
             several batch generation threads                 
         """
         
-        # largest multiple of num_threads * batch_size < sample_size
-        largest_multiple = sequtils.round_to_multiple(
-            self._loci_size, self._num_threads * self._batch_size, 
-            smallest=False)
+        # auto adjust num_threads and batch_size if the number of
+        # samples is too low
+        loop_cnt = 0
+        while True:
+            # adjust values from the second iteration onwards
+            if loop_cnt > 0:      
+                # we'll adjust batch_size first
+                if self._batch_size > 1:
+                    self._batch_size = self._batch_size // 2
+                    
+                elif self._num_threads > 1:
+                    self._num_threads -= 1
 
+            # largest multiple of num_threads * batch_size < sample_size
+            largest_multiple = sequtils.round_to_multiple(
+                self._loci_size,
+                self._num_threads * self._batch_size, 
+                smallest=False)
+
+            loop_cnt += 1
+            
+            # end condition, we cant have batch_size or num_threads < 1
+            if self._batch_size == 1 and self._num_threads == 1:
+                break
+            
+            # we keep adjusting if we cant find a good combination
+            # of batch_size and num_threads
+            if largest_multiple == 0:
+                continue
+            else:
+                break
+    
+        # if we still can't find a good (batch_size, num_threads) pair,
+        # which literally means that train or val set has 0 samples
+        # then we raise an exception
         if largest_multiple == 0:
             raise NoTracebackException(
                 "Your data does not have enough samples to generate batches "
@@ -358,6 +388,10 @@ class MSequenceGenerator:
         #: size of the loci dataframe after resizing
         self._resized_loci_size = len(self._resized_loci)
         
+        logging.info(
+            "mode '{}': batch size - {}".format(self._mode, self._batch_size))
+        logging.info(
+            "mode '{}': #threads - {}".format(self._mode, self._num_threads))
         logging.info(
             "mode '{}': Data size (after trimming {} samples) - {}".format(
                 self._mode, self._loci_size - largest_multiple, 
