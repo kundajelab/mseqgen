@@ -987,7 +987,7 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         idxs = coords['idx'].values
         
         # sample weights
-        weights = coords['weight'].values
+        weights = coords['weight'].astype(float64).values
 
         # open all the signal and bias bigwig files and store the  
         # file objects in a dictionary
