@@ -1,0 +1,3 @@
+- add sample input json file with 'background_loci' field and corresponding bed files in 'tests' folder
+- add new test case for 'background_loci' inclusion in input json
+- consume 'background_loci' field from input.json with user specified #samples
