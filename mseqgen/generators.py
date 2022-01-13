@@ -50,10 +50,6 @@
 
 """
 
-# set random seed
-import random
-random.seed(1234)
-
 import json
 import logging
 import multiprocessing as mp
@@ -62,6 +58,7 @@ import os
 import pandas as pd 
 import pyBigWig
 import pyfaidx
+import random
 import re
 
 from mseqgen import sequtils
@@ -69,6 +66,9 @@ from mseqgen.exceptionhandler import NoTracebackException
 from mseqgen import utils
 from queue import Queue
 from threading import Thread
+
+# set random seed
+random.seed(1234)
 
 
 class MSequenceGenerator:
@@ -100,17 +100,7 @@ class MSequenceGenerator:
                 *negative_sampling_rate (float)*
                     the fraction of batch_size that determines how many 
                     negative samples are added to each batch
-            
-                *sampling_mode (str)*
-                    the mode of sampling chromosome positions - one of
-                    ['peaks', 'sequential', 'random', 'manual']. In 
-                    'peaks' mode the data samples are fetched from the
-                    peaks bed file specified in the json file 
-                    input_config['data']. In 'manual' mode, the two 
-                    column pandas dataframe containing the chromosome  
-                    position information is passed to the 'samples' 
-                    argument of the class
-                
+
                 *shuffle (boolean)*
                     specify whether input data is shuffled at the 
                     begininning of each epoch
@@ -125,7 +115,7 @@ class MSequenceGenerator:
             
             chroms (str): the list of chromosomes that will be sampled
                 for batch generation
-                
+
             num_threads (int): number of parallel threads for batch
                 generation, default = 10
                 
@@ -309,19 +299,25 @@ class MSequenceGenerator:
         self._loci = sequtils.getPeakPositions(
             self._tasks, self._chroms, 
             self._chrom_sizes_df[['chrom', 'size']], self._input_flank, 
-            drop_duplicates=True)
+            peaks_key=peaks_key, drop_duplicates=True)
                         
         #: size of the input loci dataframe
         self._loci_size = len(self._loci)
         
-        if self._mode == 'train' or self._mode == 'val':
-            # trim samples so we can balance load across all threads
-            # the resulting samples will be in self._resized_loci
-            # Note: In 'train' or 'val' mode we want to make sure to
-            # not to repeat samples to skew training or validation 
-            # loss, so trimming and not padding is the better option
-            self._trim_samples()
+        #: number of random samples of loci to be selected for each epoch
+        self._num_samples = num_samples
         
+        if self._mode == 'train' or self._mode == 'val':
+            if self._num_samples == -1:
+                # trim samples so we can balance load across all threads
+                # the resulting samples will be in self._resized_loci
+                # Note: In 'train' or 'val' mode we want to make sure to
+                # not to repeat samples to skew training or validation 
+                # loss, so trimming and not padding is the better option
+                self._trim_samples()
+            else:
+                self.
+                
         elif self._mode == 'test':
             # pad samples so we can balance load across all threads
             # the resulting samples will be in self._resized_loci
@@ -787,7 +783,8 @@ class MSequenceGenerator:
         else:
             data = self._resized_loci
 
-        print("Unique data size before batch generator (after shuffling) - ", len(data.value_counts()))
+        print("Unique data size before batch generator (after shuffling) - ",
+              len(data.value_counts()))
 
         # spawn multiple processes to generate batches of data in
         # parallel for each epoch
