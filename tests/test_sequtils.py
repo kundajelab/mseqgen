@@ -102,7 +102,8 @@ def test_getPeakPositions():
                 'source': ["tests/test_data/single_task/"
                            "stranded_with_controls/task0/peaks.bed", 
                            "tests/test_data/single_task/"
-                           "stranded_with_controls/task0/peaks.bed"]
+                           "stranded_with_controls/task0/peaks.bed"],
+                'samples_per_epoch': [-1, -1]
             },
             'bias': {
                 'source': ["tests/test_data/single_task/"
@@ -125,11 +126,11 @@ def test_getPeakPositions():
                                          drop_duplicates=False)
     
     # check if columns match
-    columns = ['chrom', 'pos']    
+    columns = ['chrom', 'start_coord', 'end_coord', 'pos', 'weight']    
     assert all([a == b for a, b in zip(columns, peaks_df.columns)])
     
     # check if the shape matches
-    assert peaks_df.shape == (48, 2)
+    assert peaks_df.shape == (48, 5)
     
     # get peak positions for each task as one dataframe, this time
     # drop duplicates. Since we are using the same peaks.bed file
@@ -138,11 +139,61 @@ def test_getPeakPositions():
                                          drop_duplicates=True)
     
     # check if columns match
-    columns = ['chrom', 'pos']    
+    columns = ['chrom', 'start_coord', 'end_coord', 'pos', 'weight'] 
     assert all([a == b for a, b in zip(columns, peaks_df.columns)])
     
     # check if the shape matches
-    assert peaks_df.shape == (24, 2)
+    assert peaks_df.shape == (24, 5)
+
+def test_getPeakPositions_background():
+    """
+        test getPeakPositions function that returns a pandas 
+        dataframe. Check for shape of dataframe and column names
+    """
+
+    chroms = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 
+              'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 
+              'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 
+              'chrX', 'chrY']
+    
+    tasks = {
+                "0": {
+                    "signal": {
+                        "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_plus.bigWig", 
+                                   "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_minus.bigWig"]
+                    },
+                    "loci": {
+                        "source": ["/users/zahoor/mseqgen/tests/test_data/loci.bed"],
+                        "samples_per_epoch": [-1]
+                    },
+                    "background_loci": {
+                        "source": ["/users/zahoor/mseqgen/tests/test_data/background.bed"],
+                        "samples_per_epoch": [5]
+                    },
+                    "bias": {
+                        "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_plus.bigWig",
+                                   "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_minus.bigWig"],
+                        "smoothing": [None, None]
+                    }
+                }
+            }
+
+    # read the chrom sizes into a dataframe and filter rows from
+    # unwanted chromosomes
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes', sep='\t', 
+                              header=None, names=['chrom', 'size']) 
+    chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
+
+    # get peak positions for each task as one dataframe
+    peaks_df = sequtils.getPeakPositions(tasks, chroms, chrom_sizes, flank=128, 
+                                         drop_duplicates=False)
+    
+    # check if columns match
+    columns = ['chrom', 'start_coord', 'end_coord', 'pos', 'weight']    
+    assert all([a == b for a, b in zip(columns, peaks_df.columns)])
+    
+    # check if the shape matches
+    assert peaks_df.shape == (55, 5)
 
 
 def test_roundToMultiple():
