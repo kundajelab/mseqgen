@@ -1,0 +1,21 @@
+{
+    "0": {
+        "signal": {
+            "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_plus.bigWig", 
+                       "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_minus.bigWig"]
+        },
+        "loci": {
+            "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP.bed"],
+            "samples_per_epoch": [-1]
+        },
+        "background_loci": {
+            "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP.bed"],
+            "samples_per_epoch": [1000]
+        },
+        "bias": {
+            "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_plus.bigWig",
+                       "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_minus.bigWig"],
+            "smoothing": [null, null]
+        }
+    }
+}
