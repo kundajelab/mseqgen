@@ -163,12 +163,11 @@ def test_getPeakPositions_background():
                                    "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_minus.bigWig"]
                     },
                     "loci": {
-                        "source": ["/users/zahoor/mseqgen/tests/test_data/loci.bed"],
-                        "samples_per_epoch": [-1]
+                        "source": ["/users/zahoor/mseqgen/tests/test_data/loci.bed"]
                     },
                     "background_loci": {
                         "source": ["/users/zahoor/mseqgen/tests/test_data/background.bed"],
-                        "samples_per_epoch": [5]
+                        "ratio": [3]
                     },
                     "bias": {
                         "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_plus.bigWig",
@@ -193,7 +192,7 @@ def test_getPeakPositions_background():
     assert all([a == b for a, b in zip(columns, peaks_df.columns)])
     
     # check if the shape matches
-    assert peaks_df.shape == (55, 5)
+    assert peaks_df.shape == (200, 5)
 
 
 def test_roundToMultiple():

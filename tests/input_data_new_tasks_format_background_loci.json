@@ -5,12 +5,11 @@
                        "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_minus.bigWig"]
         },
         "loci": {
-            "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP.bed"],
-            "samples_per_epoch": [-1]
+            "source": ["/users/zahoor/mseqgen/tests/test_data/loci.bed"]
         },
         "background_loci": {
-            "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP.bed"],
-            "samples_per_epoch": [1000]
+            "source": ["/users/zahoor/mseqgen/tests/test_data/background.bed"],
+            "ratio": [3]
         },
         "bias": {
             "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_plus.bigWig",
