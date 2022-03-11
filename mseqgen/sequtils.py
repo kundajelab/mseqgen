@@ -200,6 +200,7 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False,
     loci_keys = ['loci', 'background_loci']
     if background_only:
         loci_keys = ['background_loci']
+        background_weight = 1
     
     # we concatenate all the peaks from across all the tasks
     for task in tasks:
@@ -247,18 +248,30 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False,
                 peaks_df = peaks_df.sort_values(
                     ['chrom', 'end_coord']).reset_index(drop=True)
 
-                # select random samples 
-                if tasks[task][loci_key]['samples_per_epoch'][idx] != -1:
-                    peaks_df = peaks_df.sample(
-                        n=tasks[task][loci_key]['samples_per_epoch'][idx])
+                # set num_foreground in case of foreground
+                if loci_key == 'loci':
+                    num_foreground = len(peaks_df)
+                
+                # select random samples if its background
+                elif loci_key == 'background_loci':
+                    
+                    # the number of samples to randomly select
+                    num_samples = int(num_foreground * \
+                        tasks[task][loci_key]['ratio'][idx])
+                        
+                    if num_samples > len(peaks_df):                    
+                        raise NoTracebackException(
+                            "The number of background loci supplied is "
+                            "insufficent for the ratio specified")                    
+                    else:
+                        peaks_df = peaks_df.sample(
+                            n=num_samples, replace=False)
                 
                 # set weight of sample based on loci_key
-                if loci_key == 'background_loci':
-                    peaks_df['weight'] = background_weight
+                if loci_key == 'loci':
+                    peaks_df['weight'] = foreground_weight
                 else:
-                    # for now we will set the weight of all foreground
-                    # samples to 1
-                    peaks_df['weight'] = 1
+                    peaks_df['weight'] = background_weight
                 
                 # append to all peaks data frame
                 allPeaks = allPeaks.append(peaks_df[
@@ -268,8 +281,7 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False,
                 
                 idx += 1
     
-    # drop the duplicate rows, i.e. the peaks that get duplicated
-    # for the plus and minus strand tasks
+    # drop the duplicate rows
     if drop_duplicates:
         allPeaks = allPeaks.drop_duplicates(ignore_index=True)
         

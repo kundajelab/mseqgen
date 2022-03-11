@@ -122,6 +122,18 @@ class MSequenceGenerator:
             batch_size (int): size of each generated batch of data, 
                 default = 64
                 
+            epochs (int): the number of epochs for which data has to 
+                be generated
+                
+            background_only (boolean): True, if batches are to be 
+                generated with background samples alone
+                
+            foreground_weight (float): sample weight for foreground
+                samples
+            
+            background_weight (float): sample weight for background
+                samples
+                
         **Members**
         
         IGNORE_FOR_SPHINX_DOCS:
@@ -190,7 +202,9 @@ class MSequenceGenerator:
     """
 
     def __init__(self, tasks_json, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms, num_threads=10, batch_size=64):
+                 chrom_sizes, chroms, num_threads=10, batch_size=64, 
+                 epochs=100, background_only=False, foreground_weight=1, 
+                 background_weight=0):
         
         #: ML task mode 'train', 'val' or 'test'
         self._mode = batch_gen_params['mode']
@@ -295,38 +309,62 @@ class MSequenceGenerator:
         #: if True, shuffle the data before the beginning of the epoch
         self._shuffle = batch_gen_params['shuffle']
         
-        #: pandas dataframe of aggregated loci across all tasks
-        self._loci = sequtils.getPeakPositions(
-            self._tasks, self._chroms, 
-            self._chrom_sizes_df[['chrom', 'size']], self._input_flank, 
-            peaks_key=peaks_key, drop_duplicates=True)
-                        
-        #: size of the input loci dataframe
-        self._loci_size = len(self._loci)
+        # list of loci dataframes for each epoch
+        self._loci = []
         
-        #: number of random samples of loci to be selected for each epoch
-        self._num_samples = num_samples
+        # size of each loci dataframe
+        # we expect this to be the same for each epoch
+        self._loci_size = [] 
         
-        if self._mode == 'train' or self._mode == 'val':
-            if self._num_samples == -1:
+        # resized loci for each epoch for multithreaded load balancing
+        self._resized_loci = []
+        
+        # size of the resized loci dataframe for each epoch
+        # we expect this to be the same for each epoch
+        self._resized_loci_size = [] 
+
+        # create a dataframe of samples for each epoch
+        # If no background is specified then this results in an 
+        # identical dataframe of foregorund loci for all epochs, 
+        # but when background is specified you will get the foreground
+        # samples mixed with a random sampling of the background 
+        # samples depending on the user speficied background:foreground
+        # ratio
+        for i in range(epochs):
+            #: pandas dataframe of aggregated loci across all tasks
+            peaks_df = sequtils.getPeakPositions(
+                self._tasks, self._chroms, 
+                self._chrom_sizes_df[['chrom', 'size']], self._input_flank,
+                drop_duplicates=True, background_only=background_only, 
+                foreground_weight=foreground_weight, 
+                background_weight=background_weight)
+            print("LENNN ", len(peaks_df))
+            self._loci.append(peaks_df)
+
+            #: size of the input loci dataframe
+            self._loci_size.append(len(self._loci[-1]))
+
+            if self._mode == 'train' or self._mode == 'val':
                 # trim samples so we can balance load across all threads
                 # the resulting samples will be in self._resized_loci
                 # Note: In 'train' or 'val' mode we want to make sure to
                 # not to repeat samples to skew training or validation 
                 # loss, so trimming and not padding is the better option
                 self._trim_samples()
-            else:
-                self.
-                
-        elif self._mode == 'test':
-            # pad samples so we can balance load across all threads
-            # the resulting samples will be in self._resized_loci
-            # Note: In 'test' mode we want to make sure not to miss
-            # any samples, so we pad by repeating a few samples, but 
-            # we need to make sure to not count those samples for 
-            # the metrics computation
-            self._pad_samples()
+
+            elif self._mode == 'test':
+                # pad samples so we can balance load across all threads
+                # the resulting samples will be in self._resized_loci
+                # Note: In 'test' mode we want to make sure not to miss
+                # any samples, so we pad by repeating a few samples, but 
+                # we need to make sure to not count those samples for 
+                # the metrics computation
+                self._pad_samples()
+        
+        #: the current epoch#
+        self.curr_epoch = 0
             
+
     def _trim_samples(self):
         """
             trim self._loci dataframe so that the length of the 
@@ -350,7 +388,7 @@ class MSequenceGenerator:
 
             # largest multiple of num_threads * batch_size < sample_size
             largest_multiple = sequtils.round_to_multiple(
-                self._loci_size,
+                self._loci_size[-1],
                 self._num_threads * self._batch_size, 
                 smallest=False)
 
@@ -378,20 +416,25 @@ class MSequenceGenerator:
 
         #: pandas dataframe of loci after resizing for optimal
         #: batch generation
-        self._resized_loci = self._loci.sample(
-            largest_multiple, replace=False)
+        self._resized_loci.append(self._loci[-1].sample(
+            largest_multiple, replace=False))
 
         #: size of the loci dataframe after resizing
-        self._resized_loci_size = len(self._resized_loci)
+        self._resized_loci_size.append(len(self._resized_loci[-1]))
         
-        logging.info(
-            "mode '{}': batch size - {}".format(self._mode, self._batch_size))
-        logging.info(
-            "mode '{}': #threads - {}".format(self._mode, self._num_threads))
-        logging.info(
-            "mode '{}': Data size (after trimming {} samples) - {}".format(
-                self._mode, self._loci_size - largest_multiple, 
-                self._resized_loci_size))
+        # lets output the logging info only for the data for the first
+        # epoch, this will be identical for the remaining epochs
+        if len(self._resized_loci) == 1:
+            logging.info(
+                "mode '{}': batch size - {}".format(
+                    self._mode, self._batch_size))
+            logging.info(
+                "mode '{}': #threads - {}".format(
+                    self._mode, self._num_threads))
+            logging.info(
+                "mode '{}': Data size (after trimming {} samples) - {}".format(
+                    self._mode, self._loci_size[-1] - largest_multiple, 
+                    self._resized_loci_size[-1]))
  
     def _pad_samples(self):
         """
@@ -403,22 +446,24 @@ class MSequenceGenerator:
         
         # smallest multiple of num_threads * batch_size > loci_size
         smallest_multiple = sequtils.round_to_multiple(
-            self._loci_size, self._num_threads * self._batch_size, 
+            self._loci_size[-1], self._num_threads * self._batch_size, 
             smallest=True)
 
         #: pandas dataframe of loci after resizing for optimal
         #: batch generation
-        self._resized_loci = pd.concat(
-            [self._loci, self._loci.sample(
-                smallest_multiple - self._loci_size, replace=True)])
+        self._resized_loci.append(pd.concat(
+            [self._loci[-1], self._loci.sample(
+                smallest_multiple - self._loci_size[-1], replace=True)]))
 
         #: size of the loci dataframe after resizing
-        self._resized_loci_size = len(self._resized_loci)
+        self._resized_loci_size.append(len(self._resized_loci[-1]))
         
-        logging.info(
-            "mode '{}': Data size (after padding {} samples) - {}".format(
-                self._mode, smallest_multiple - self._loci_size, 
-                self._resized_loci_size))
+        # print the logging info only once
+        if len( self._resized_loci) == 1:
+            logging.info(
+                "mode '{}': Data size (after padding {} samples) - {}".format(
+                    self._mode, smallest_multiple - self._loci_size[-1], 
+                    self._resized_loci_size[-1]))
 
     def _get_num_bias_tracks_for_task(self, task):
         """
@@ -500,7 +545,7 @@ class MSequenceGenerator:
                 int: number of data samples before resizing
         """
         
-        return self._loci_size
+        return self._loci_size[0]
     
     def get_resized_samples_len(self):
         """
@@ -513,7 +558,7 @@ class MSequenceGenerator:
                 int: number of data samples used in batch generation
         """
         
-        return self._resized_loci_size
+        return self._resized_loci_size[0]
     
     def len(self):
         """
@@ -523,7 +568,7 @@ class MSequenceGenerator:
                 int: number of batches of data generated in each epoch
         """
         
-        return self._resized_loci_size // self._batch_size
+        return self._resized_loci_size[0] // self._batch_size
    
     def _generate_batch(self, coords):
         """ 
@@ -778,10 +823,10 @@ class MSequenceGenerator:
         
         if self._shuffle:
             # shuffle at the beginning of each epoch
-            data = self._resized_loci.sample(frac=1.0)
+            data = self._resized_loci[self.curr_epoch].sample(frac=1.0)
             logging.debug("{} Shuffling complete".format(self._mode))
         else:
-            data = self._resized_loci
+            data = self._resized_loci[self.curr_epoch]
 
         print("Unique data size before batch generator (after shuffling) - ",
               len(data.value_counts()))
@@ -815,6 +860,9 @@ class MSequenceGenerator:
             "{} Finished join for epoch".format(self._mode))
 
         logging.debug("{} Ready for next epoch".format(self._mode))
+
+        # increment epoch#
+        self.curr_epoch += 1
 
 
 class MBPNetSequenceGenerator(MSequenceGenerator):
@@ -881,14 +929,18 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
     """
 
     def __init__(self, tasks_json, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms, num_threads=10, batch_size=64):
+                 chrom_sizes, chroms, num_threads=10, batch_size=64, 
+                 epochs=100, background_only=False, foreground_weight=1, 
+                 background_weight=0):
         
         # name of the generator class
         self.name = "BPNet"
         
         # call base class constructor
         super().__init__(tasks_json, batch_gen_params, reference_genome, 
-                         chrom_sizes, chroms, num_threads, batch_size)
+                         chrom_sizes, chroms, num_threads, batch_size, 
+                         epochs, background_only, foreground_weight, 
+                         background_weight)
         
     def get_name(self):
         """ 
@@ -1006,9 +1058,12 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         rowCnt = 0
         for _, row in coords.iterrows():
             # randomly set a jitter value to move the peak summit 
-            # slightly away from the exact center
+            # slightly away from the exact center (only for samples 
+            # whose weight is not 0)
             jitter = 0
-            if self._mode == "train" and self._max_jitter:
+            if self._mode == "train" and self._max_jitter and \
+                row['weight'] != 0:
+                
                 jitter = random.randint(-self._max_jitter, self._max_jitter)
             
             # record the jitter for this sample
