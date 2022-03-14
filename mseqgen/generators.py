@@ -338,7 +338,6 @@ class MSequenceGenerator:
                 drop_duplicates=True, background_only=background_only, 
                 foreground_weight=foreground_weight, 
                 background_weight=background_weight)
-            print("LENNN ", len(peaks_df))
             self._loci.append(peaks_df)
 
             #: size of the input loci dataframe
@@ -827,9 +826,6 @@ class MSequenceGenerator:
             logging.debug("{} Shuffling complete".format(self._mode))
         else:
             data = self._resized_loci[self.curr_epoch]
-
-        print("Unique data size before batch generator (after shuffling) - ",
-              len(data.value_counts()))
 
         # spawn multiple processes to generate batches of data in
         # parallel for each epoch
