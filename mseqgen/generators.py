@@ -324,17 +324,24 @@ class MSequenceGenerator:
         self._resized_loci_size = [] 
 
         # create a dataframe of samples for each epoch
-        # If no background is specified then this results in an 
-        # identical dataframe of foregorund loci for all epochs, 
-        # but when background is specified you will get the foreground
-        # samples mixed with a random sampling of the background 
-        # samples depending on the user speficied background:foreground
-        # ratio
+        # In 'train' and 'val' If no background is specified then
+        # this results in an identical dataframe of foreground loci for
+        # all epochs, but when background is specified you will get the
+        # foreground samples mixed with a random sampling of the  
+        # background samples depending on the user speficied 
+        # background:foreground ratio
+        # In 'test' only foreground loci are used
         for i in range(epochs):
+            # keys from input json to specify where to get samples from
+            loci_keys = ['loci', 'background_loci']
+            if self._mode == 'test':
+                loci_keys = ['loci']                
+            
             #: pandas dataframe of aggregated loci across all tasks
             peaks_df = sequtils.getPeakPositions(
                 self._tasks, self._chroms, 
                 self._chrom_sizes_df[['chrom', 'size']], self._input_flank,
+                loci_keys=loci_keys,
                 drop_duplicates=True, background_only=background_only, 
                 foreground_weight=foreground_weight, 
                 background_weight=background_weight)

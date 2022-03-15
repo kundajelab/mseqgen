@@ -154,9 +154,10 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
     return positions    
     
 
-def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False, 
-                     background_only=False, foreground_weight=1, 
-                     background_weight=0):
+def getPeakPositions(tasks, chroms, chrom_sizes, flank, 
+                     loci_keys=['loci', 'background_loci'], 
+                     drop_duplicates=False, background_only=False, 
+                     foreground_weight=1, background_weight=0):
     """ 
         Peak positions for all the tasks filtered based on required
         chromosomes and other qc filters. Since 'task' here refers 
@@ -174,6 +175,8 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False,
                 sizes with 'chrom' and 'size' columns
             flank (int): Buffer size before & after the position to  
                 ensure we dont fetch values at index < 0 & > chrom size
+            loci_keys (list): list of keys that specify the loci to
+                select from the input json for training/testing              
             drop_duplicates (boolean): True if duplicates should be
                 dropped from returned dataframe. 
             background_only (boolean): True if only 'background_loci'
@@ -197,8 +200,9 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank, drop_duplicates=False,
     allPeaks = pd.DataFrame()
 
     # specify what loci to pick the data samples from
-    loci_keys = ['loci', 'background_loci']
     if background_only:
+        if 'background_loci' not in loci_keys:
+            raise NoTracebackException("Key not specified: 'background_loci'")            
         loci_keys = ['background_loci']
         background_weight = 1
     
