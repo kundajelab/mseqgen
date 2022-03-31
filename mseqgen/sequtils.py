@@ -154,7 +154,8 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
     return positions    
     
 
-def getPeakPositions(tasks, chroms, chrom_sizes, flank, 
+def getPeakPositions(tasks, chrom_sizes, flank, 
+                     chroms=None, 
                      loci_keys=['loci', 'background_loci'], 
                      drop_duplicates=False, background_only=False, 
                      foreground_weight=1, background_weight=0):
@@ -170,11 +171,11 @@ def getPeakPositions(tasks, chroms, chrom_sizes, flank,
                 information. Each task in tasks should have atleast 
                 the key 'loci' that has the path to he peaks file,
                 optional key is 'background_loci'
-            chroms (list): The list of required test chromosomes
             chrom_sizes (pandas.Dataframe): dataframe of chromosome 
                 sizes with 'chrom' and 'size' columns
             flank (int): Buffer size before & after the position to  
                 ensure we dont fetch values at index < 0 & > chrom size
+            chroms (list): The list of chromosomes to include
             loci_keys (list): list of keys that specify the loci to
                 select from the input json for training/testing              
             drop_duplicates (boolean): True if duplicates should be

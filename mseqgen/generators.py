@@ -339,8 +339,9 @@ class MSequenceGenerator:
             
             #: pandas dataframe of aggregated loci across all tasks
             peaks_df = sequtils.getPeakPositions(
-                self._tasks, self._chroms, 
+                self._tasks,
                 self._chrom_sizes_df[['chrom', 'size']], self._input_flank,
+                self._chroms,
                 loci_keys=loci_keys,
                 drop_duplicates=True, background_only=background_only, 
                 foreground_weight=foreground_weight, 
