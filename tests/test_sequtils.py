@@ -122,7 +122,8 @@ def test_getPeakPositions():
     chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
 
     # get peak positions for each task as one dataframe
-    peaks_df = sequtils.getPeakPositions(tasks, chroms, chrom_sizes, flank=128, 
+    peaks_df = sequtils.getPeakPositions(tasks, chrom_sizes, flank=128,
+                                         chroms=chroms,
                                          drop_duplicates=False)
     
     # check if columns match
@@ -135,7 +136,8 @@ def test_getPeakPositions():
     # get peak positions for each task as one dataframe, this time
     # drop duplicates. Since we are using the same peaks.bed file
     # the total number of peak position should be reduced by half
-    peaks_df = sequtils.getPeakPositions(tasks, chroms, chrom_sizes, flank=128, 
+    peaks_df = sequtils.getPeakPositions(tasks, chrom_sizes, flank=128,
+                                         chroms=chroms,
                                          drop_duplicates=True)
     
     # check if columns match
@@ -184,7 +186,8 @@ def test_getPeakPositions_background():
     chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
 
     # get peak positions for each task as one dataframe
-    peaks_df = sequtils.getPeakPositions(tasks, chroms, chrom_sizes, flank=128, 
+    peaks_df = sequtils.getPeakPositions(tasks, chrom_sizes, flank=128, 
+                                         chroms=chroms,
                                          drop_duplicates=False)
     
     # check if columns match
