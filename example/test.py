@@ -60,10 +60,6 @@ with open(args.input_json, "r") as input_json:
 with open(args.batchgen_params_json, "r") as batch_gen_json:
     batch_gen_params = json.loads(batch_gen_json.read())
 
-# load the bpnet params from json file
-with open(args.bpnet_params_json, "r") as bpnet_json:
-    bpnet_params = json.loads(bpnet_json.read())
-
                 
 chroms = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
           'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
@@ -76,12 +72,17 @@ train_chroms = list(set(chroms).difference(set(val_chroms + test_chroms)))
 
 print(input_params)
 print(batch_gen_params)
-print(bpnet_params)
 
-seqgen = MBPNetSequenceGenerator(input_params, batch_gen_params, bpnet_params,
+
+# def __init__(self, tasks_json, batch_gen_params, reference_genome, 
+#                  chrom_sizes, chroms, num_threads=10, batch_size=64, 
+#                  epochs=100, background_only=False, foreground_weight=1, 
+#                  background_weight=0):
+        
+seqgen = MBPNetSequenceGenerator(args.input_json, batch_gen_params,
                                  args.reference_genome, args.chrom_sizes, 
-                                 train_chroms, args.threads, args.epochs, 
-                                 args.batch_size)
+                                 train_chroms, args.threads, 
+                                 args.batch_size, args.epochs, False, 1, 0)
 
 if seqgen is not None:
     generator = seqgen.gen()
@@ -91,16 +92,13 @@ if seqgen is not None:
     t1 = time.time()
 
     batchCount = 0
-    for batchx, batchy in generator:
+    for batch in generator:
         print(batchCount)
         batchCount += 1
-        if batchCount == seqgen.len():
-            seqgen.set_ready_for_next_epoch()
-            batchCount = 0
-
     t2 = time.time()
     print(t2 - t1)
 
+    
 """
 python test.py \
 --input-json /users/zahoor/mseqgen/tests/input.json \
@@ -156,3 +154,12 @@ python test.py \
 
 
 """
+# python test.py \
+# --input-json /users/zahoor/mseqgen/tests/input_data_new_tasks_format_background_loci.json \
+# --reference-genome /users/zahoor/reference/hg38.genome.fa \
+# --chrom-sizes /users/zahoor/reference/GRCh38_EBV.chrom.sizes \
+# --batchgen-params-json \
+#     /users/zahoor/mseqgen/tests/batchgen_params_random.json \
+# --threads 10 \
+# --epochs 100 \
+# --batch-size 64
