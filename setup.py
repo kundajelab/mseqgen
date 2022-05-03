@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="mseqgen",
-    version="0.1.1",
+    version="1.0.0",
     description=("Multitask batch generation for training deeplearning"
                  "models on CHIP-seq, CHIP-exo, CHIP-nexus, ATAC-seq, "
                  "RNA-seq (or any other genomics assays that use "
