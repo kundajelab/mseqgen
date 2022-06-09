@@ -969,9 +969,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         
         # call base class constructor
         super().__init__(tasks_json, batch_gen_params, reference_genome, 
-                         chrom_sizes, chroms, num_threads, batch_size, 
-                         epochs, background_only, foreground_weight, 
-                         background_weight)
+                         chrom_sizes, chroms, loci_indices, num_threads, 
+                         batch_size, epochs, background_only, 
+                         foreground_weight, background_weight)
         
     def get_name(self):
         """ 
