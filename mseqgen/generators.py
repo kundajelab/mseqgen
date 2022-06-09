@@ -277,8 +277,9 @@ class MSequenceGenerator:
         
         # keep only those _chrom_sizes_df rows corresponding to the 
         # required chromosomes in _chroms
-        self._chrom_sizes_df = self._chrom_sizes_df[
-            self._chrom_sizes_df['chrom'].isin(self._chroms)]
+        if self._chroms != None:
+            self._chrom_sizes_df = self._chrom_sizes_df[
+                self._chrom_sizes_df['chrom'].isin(self._chroms)]
 
         # generate a new column for sampling weights of the chromosomes
         self._chrom_sizes_df['weights'] = \
