@@ -157,6 +157,7 @@ def getChromPositions(chroms, chrom_sizes, flank, mode='sequential',
 def getPeakPositions(tasks, chrom_sizes, flank, 
                      chroms=None, 
                      loci_indices=None,
+                     background_loci_indices=None,
                      loci_keys=['loci', 'background_loci'], 
                      drop_duplicates=False, background_only=False, 
                      foreground_weight=1, background_weight=0):
@@ -180,8 +181,8 @@ def getPeakPositions(tasks, chrom_sizes, flank,
                 precedence over loci_indices. Applies to both loci
                 and background_loci
             loci_indices (list): list of indices to filter loci peaks.
-                Does not apply to background_loci. Set chroms to None,
-                otherwise this is parameter is ignored
+            background_loci_indices (list): list of indices to filter 
+                background loci peaks.
             loci_keys (list): list of keys that specify the loci to
                 select from the input json for training/testing              
             drop_duplicates (boolean): True if duplicates should be
@@ -233,13 +234,10 @@ def getPeakPositions(tasks, chrom_sizes, flank,
                     # chromosomes
                     # applies both to loci and background_loci
                     peaks_df = peaks_df[peaks_df['chrom'].isin(chroms)]
-                elif loci_indices != None:
-                    if (loci_key == 'loci') or \
-                        (loci_key == 'background_loci' and background_only):
+                elif loci_key == 'loci' and loci_indices != None:
                         peaks_df = peaks_df.loc[peaks_df.index[loci_indices]]
-                    # elif loci_key == 'background_loci':
-                    # we dont filter for background_loci and just use 
-                    # 'ratio' to sample
+                elif loci_key == 'background_loci' and background_loci_indices != None:
+                        peaks_df = peaks_df.loc[peaks_df.index[background_loci_indices]]
                      
                 # create new column for peak pos
                 peaks_df['pos'] = peaks_df['st'] + peaks_df['summit']
@@ -273,7 +271,9 @@ def getPeakPositions(tasks, chrom_sizes, flank,
                     num_foreground = len(peaks_df)
                 
                 # select random samples if its background
-                elif loci_key == 'background_loci' and not background_only:
+                elif loci_key == 'background_loci' and \
+                    background_loci_indices == None and \
+                    not background_only:
                     
                     # the number of samples to randomly select
                     num_samples = int(num_foreground * \
