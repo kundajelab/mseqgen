@@ -119,6 +119,9 @@ class MSequenceGenerator:
             loci_indices (list): list of indices to filter rows from
                 the 'loci' peaks file
 
+            background_loci_indices (list): list of indices to filter 
+                rows from the 'background_loci' peaks file
+
             num_threads (int): number of parallel threads for batch
                 generation, default = 10
                 
@@ -162,6 +165,9 @@ class MSequenceGenerator:
             _loci_indices (list): list of indices to filter rows from
                 the 'loci' peaks file
             
+            _background_loci_indices (list): list of indices to filter 
+                rows from the 'background_loci' peaks file
+
             _chrom_sizes_df (pandas.Dataframe): dataframe of the 
                 chromosomes and their corresponding sizes
             
@@ -209,9 +215,10 @@ class MSequenceGenerator:
     """
 
     def __init__(self, tasks_json, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms=None, loci_indices=None, num_threads=10,
-                 batch_size=64, epochs=100, background_only=False, 
-                 foreground_weight=1, background_weight=0):
+                 chrom_sizes, chroms=None, loci_indices=None, 
+                 background_loci_indices, num_threads=10, batch_size=64, 
+                 epochs=100, background_only=False, foreground_weight=1, 
+                 background_weight=0):
         
         #: ML task mode 'train', 'val' or 'test'
         self._mode = batch_gen_params['mode']
@@ -275,6 +282,9 @@ class MSequenceGenerator:
         #: list of indices to select rows from the 'loci' peaks file
         self._loci_indices = loci_indices
         
+        #: list of indices to select rows from the 'background_loci' peaks file
+        self._background_loci_indices = background_loci_indices
+
         # keep only those _chrom_sizes_df rows corresponding to the 
         # required chromosomes in _chroms
         if self._chroms != None:
@@ -354,6 +364,7 @@ class MSequenceGenerator:
                 self._chrom_sizes_df[['chrom', 'size']], self._input_flank,
                 self._chroms,
                 loci_indices=self._loci_indices,
+                background_loci_indices=self._background_loci_indices,
                 loci_keys=loci_keys,
                 drop_duplicates=True, background_only=background_only, 
                 foreground_weight=foreground_weight, 
@@ -939,6 +950,9 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
             loci_indices (list): list of indices to filter rows from
                 the 'loci' peaks file
                 
+            background_loci_indices (list): list of indices to filter 
+                rows from the 'background_loci' peaks file
+
             num_threads (int): number of parallel threads for batch
                 generation, default = 10
                 
@@ -960,7 +974,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
     """
 
     def __init__(self, tasks_json, batch_gen_params, reference_genome, 
-                 chrom_sizes, chroms=None, loci_indices=None, num_threads=10,
+                 chrom_sizes, chroms=None, loci_indices=None, 
+                 background_loci_indices=None, num_threads=10,
                  batch_size=64, epochs=100, background_only=False, 
                  foreground_weight=1, background_weight=0):
         
@@ -969,7 +984,8 @@ class MBPNetSequenceGenerator(MSequenceGenerator):
         
         # call base class constructor
         super().__init__(tasks_json, batch_gen_params, reference_genome, 
-                         chrom_sizes, chroms, loci_indices, num_threads, 
+                         chrom_sizes, chroms, loci_indices, 
+                         background_loci_indices, num_threads, 
                          batch_size, epochs, background_only, 
                          foreground_weight, background_weight)
         
