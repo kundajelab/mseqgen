@@ -216,7 +216,7 @@ class MSequenceGenerator:
 
     def __init__(self, tasks_json, batch_gen_params, reference_genome, 
                  chrom_sizes, chroms=None, loci_indices=None, 
-                 background_loci_indices, num_threads=10, batch_size=64, 
+                 background_loci_indices=None, num_threads=10, batch_size=64, 
                  epochs=100, background_only=False, foreground_weight=1, 
                  background_weight=0):
         
