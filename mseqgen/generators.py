@@ -368,7 +368,7 @@ class MSequenceGenerator:
                 loci_keys=loci_keys,
                 drop_duplicates=True, background_only=background_only, 
                 foreground_weight=foreground_weight, 
-                background_weight=background_weight)
+                background_weight=background_weight, mode=self._mode)
             self._loci.append(peaks_df)
 
             #: size of the input loci dataframe

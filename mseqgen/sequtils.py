@@ -160,7 +160,7 @@ def getPeakPositions(tasks, chrom_sizes, flank,
                      background_loci_indices=None,
                      loci_keys=['loci', 'background_loci'], 
                      drop_duplicates=False, background_only=False, 
-                     foreground_weight=1, background_weight=0):
+                     foreground_weight=1, background_weight=0, mode='train'):
     """ 
         Peak positions for all the tasks filtered based on required
         chromosomes and other qc filters. Since 'task' here refers 
@@ -194,6 +194,7 @@ def getPeakPositions(tasks, chrom_sizes, flank,
                 of 'loci'
             background_weight (int): The value to set for the weight 
                 of 'background_loci'
+            mode (str): 'train', 'val' or 'test'
             
         Returns:
             pandas.DataFrame: 
@@ -284,8 +285,14 @@ def getPeakPositions(tasks, chrom_sizes, flank,
                             "The number of background loci supplied is "
                             "insufficent for the ratio specified")                    
                     else:
-                        peaks_df = peaks_df.sample(
-                            n=num_samples, replace=False)
+                        if mode == 'val':
+                            # in validation mode we'll fix the validation
+                            # samples for each epoch to be the first
+                            # 'num_samples' samples
+                            peaks_df = peaks_df[0:num_samples]
+                        else:
+                            peaks_df = peaks_df.sample(
+                                n=num_samples, replace=False)
                 
                 # set weight of sample based on loci_key
                 if loci_key == 'loci':
