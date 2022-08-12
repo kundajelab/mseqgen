@@ -270,6 +270,59 @@ def test_getPeakPositions_background():
     assert peaks_df.shape == (200, 5)
 
 
+def test_getPeakPositions_background_val():
+    """
+        test getPeakPositions function that returns a pandas 
+        dataframe. Check for shape of dataframe and column names
+    """
+
+    chroms = ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 
+              'chr9', 'chr10', 'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 
+              'chr16', 'chr17', 'chr18', 'chr19', 'chr20', 'chr21', 'chr22', 
+              'chrX', 'chrY']
+    
+    tasks = {
+                "0": {
+                    "signal": {
+                        "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_plus.bigWig", 
+                                   "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_minus.bigWig"]
+                    },
+                    "loci": {
+                        "source": ["/users/zahoor/mseqgen/tests/test_data/loci.bed"]
+                    },
+                    "background_loci": {
+                        "source": ["/users/zahoor/mseqgen/tests/test_data/background.bed"],
+                        "ratio": [3]
+                    },
+                    "bias": {
+                        "source": ["/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_plus.bigWig",
+                                   "/users/zahoor/lab_data3/TF-Atlas/test_TF/data/ENCSR362NWP_control_minus.bigWig"],
+                        "smoothing": [None, None]
+                    }
+                }
+            }
+
+    # read the chrom sizes into a dataframe and filter rows from
+    # unwanted chromosomes
+    chrom_sizes = pd.read_csv('tests/GRCh38_EBV.chrom.sizes', sep='\t', 
+                              header=None, names=['chrom', 'size']) 
+    chrom_sizes = chrom_sizes[chrom_sizes['chrom'].isin(chroms)]
+
+    # get peak positions for each task as one dataframe
+    peaks_df = sequtils.getPeakPositions(tasks, chrom_sizes, flank=128, 
+                                         chroms=chroms, loci_indices=None,
+                                         drop_duplicates=False, mode='val')
+    
+    print(peaks_df.to_string())
+    
+    # check if columns match
+    columns = ['chrom', 'start_coord', 'end_coord', 'pos', 'weight']    
+    assert all([a == b for a, b in zip(columns, peaks_df.columns)])
+    
+    # check if the shape matches
+    assert peaks_df.shape == (200, 5)
+
+
 def test_getPeakPositions_background_loci_indices():
     """
         test getPeakPositions function that returns a pandas 
